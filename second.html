@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SharozCadDrawingViewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bp-navy:#0a2540;
+  --bp-navy-2:#0e3358;
+  --bp-line:#bfe4ff;
+  --bp-line-dim:#4d7ea8;
+  --dim-yellow:#f5c542;
+  --steel:#232a31;
+  --steel-2:#2e363f;
+  --steel-3:#3a434d;
+  --accent:#e0762b;
+  --accent-2:#ffb37a;
+  --ink:#eef2f5;
+  --ink-dim:#9fb0bb;
+  --ok:#5fd08a;
+  --warn:#e0762b;
+  --border:#3a434d;
+  --canvas-bg:#0a2540;
+  font-size:16px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --steel:#eef1f4; --steel-2:#ffffff; --steel-3:#dde3e9;
+    --ink:#182229; --ink-dim:#5a6a76; --border:#d3dae1;
+  }
+}
+:root[data-theme="dark"]{
+  --steel:#232a31; --steel-2:#2e363f; --steel-3:#3a434d;
+  --ink:#eef2f5; --ink-dim:#9fb0bb; --border:#3a434d;
+}
+:root[data-theme="light"]{
+  --steel:#eef1f4; --steel-2:#ffffff; --steel-3:#dde3e9;
+  --ink:#182229; --ink-dim:#5a6a76; --border:#d3dae1;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--steel);
+  color:var(--ink);
+  font-family:"Space Grotesk", "Segoe UI", sans-serif;
+  min-height:100vh;
+}
+.mono{font-family:"JetBrains Mono", monospace;}
+
+/* ---------- header ---------- */
+header.app-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 22px; border-bottom:1px solid var(--border);
+  background:var(--steel-2);
+  flex-wrap:wrap; gap:10px;
+}
+.brand{display:flex; align-items:center; gap:12px;}
+.brand-icon{flex:none; width:44px; height:44px; border-radius:8px; background:var(--bp-navy);
+  display:flex; align-items:center; justify-content:center; border:1px solid var(--border);}
+.brand h1{font-size:1.28rem; margin:0; font-weight:700; letter-spacing:.2px;}
+.brand h1 span{color:var(--accent);}
+.brand p{margin:2px 0 0; font-size:.74rem; color:var(--ink-dim); font-family:"JetBrains Mono",monospace;}
+.head-right{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+.dev-credit{font-size:.78rem; color:var(--ink-dim); text-align:right; font-family:"JetBrains Mono",monospace; line-height:1.5;}
+.dev-credit a{color:var(--accent-2); text-decoration:none;}
+.dev-credit a:hover{text-decoration:underline;}
+#btnTheme{
+  background:var(--steel); border:1px solid var(--border); color:var(--ink);
+  padding:8px 14px; border-radius:20px; font-family:"JetBrains Mono",monospace; font-size:.78rem;
+  cursor:pointer; white-space:nowrap;
+}
+#btnTheme:hover{border-color:var(--accent); color:var(--accent-2);}
+
+/* ---------- tabs ---------- */
+nav.tabs{
+  display:flex; gap:2px; padding:0 22px; background:var(--steel-2);
+  border-bottom:1px solid var(--border); overflow-x:auto;
+}
+nav.tabs button{
+  appearance:none; border:none; background:transparent; color:var(--ink-dim);
+  padding:12px 18px; font-family:"JetBrains Mono",monospace; font-size:.82rem;
+  cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;
+}
+nav.tabs button.active{color:var(--ink); border-bottom-color:var(--accent);}
+nav.tabs button:hover{color:var(--ink);}
+
+main{padding:20px; max-width:1400px; margin:0 auto;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ---------- shared card ---------- */
+.card{
+  background:var(--steel-2); border:1px solid var(--border); border-radius:6px;
+  padding:16px; margin-bottom:16px;
+}
+.card h2{margin:0 0 4px; font-size:1rem; font-weight:600;}
+.card .hint{color:var(--ink-dim); font-size:.8rem; margin:0 0 14px;}
+
+/* ---------- controls row ---------- */
+.controls-row{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end;}
+.field{display:flex; flex-direction:column; gap:5px; min-width:110px;}
+.field label{font-size:.72rem; color:var(--ink-dim); font-family:"JetBrains Mono",monospace; text-transform:uppercase; letter-spacing:.04em;}
+.field input, .field select{
+  background:var(--steel); border:1px solid var(--border); color:var(--ink);
+  padding:8px 9px; border-radius:4px; font-family:"JetBrains Mono",monospace; font-size:.85rem; width:100%;
+}
+.field input:focus, .field select:focus{outline:2px solid var(--accent); outline-offset:1px;}
+.btn{
+  background:var(--accent); color:#1a1006; border:none; padding:9px 16px;
+  border-radius:4px; font-weight:600; font-size:.85rem; cursor:pointer; font-family:"Space Grotesk",sans-serif;
+}
+.btn:hover{background:var(--accent-2);}
+.btn.secondary{background:transparent; border:1px solid var(--border); color:var(--ink);}
+.btn.secondary:hover{border-color:var(--accent); color:var(--accent-2);}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+.btn-row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+
+/* ---------- segmented toggle (sheeting view) ---------- */
+.seg-toggle{display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+.seg-toggle button{
+  background:var(--steel); border:none; color:var(--ink-dim); padding:8px 13px;
+  font-family:"JetBrains Mono",monospace; font-size:.76rem; cursor:pointer; border-right:1px solid var(--border);
+}
+.seg-toggle button:last-child{border-right:none;}
+.seg-toggle button.active{background:var(--accent); color:#1a1006; font-weight:600;}
+.seg-toggle button:hover:not(.active){color:var(--ink);}
+.seg-label{font-size:.72rem; color:var(--ink-dim); font-family:"JetBrains Mono",monospace; text-transform:uppercase; letter-spacing:.04em; margin-right:2px;}
+
+/* ---------- 2D view ---------- */
+.view-switch{display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;}
+.view-switch button{
+  background:var(--steel); border:1px solid var(--border); color:var(--ink-dim);
+  padding:7px 12px; border-radius:4px; font-family:"JetBrains Mono",monospace; font-size:.75rem; cursor:pointer;
+}
+.view-switch button.active{border-color:var(--accent); color:var(--accent-2);}
+#canvas2dWrap{
+  background:var(--canvas-bg); border:1px solid var(--border); border-radius:6px; overflow:hidden;
+  display:flex; justify-content:center; align-items:center;
+}
+#canvas2d{display:block; max-width:100%; height:auto;}
+.legend{display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; font-size:.72rem; color:var(--ink-dim); font-family:"JetBrains Mono",monospace;}
+.legend span{display:inline-flex; align-items:center; gap:6px;}
+.swatch{width:14px; height:3px; display:inline-block;}
+.swatch.fill{height:10px; border-radius:2px;}
+
+/* ---------- 3D view ---------- */
+#canvas3dWrap{position:relative; background:#0d1117; border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+#canvas3d{display:block; width:100%; height:560px;}
+.overlay-panel{
+  position:absolute; top:12px; left:12px; background:rgba(15,20,25,.78);
+  border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:.72rem;
+  font-family:"JetBrains Mono",monospace; color:var(--ink-dim); max-width:230px; backdrop-filter:blur(3px);
+}
+.overlay-panel b{color:var(--ink);}
+.hand-status{position:absolute; bottom:12px; left:12px; background:rgba(15,20,25,.78);
+  border:1px solid var(--border); border-radius:6px; padding:8px 12px; font-size:.72rem;
+  font-family:"JetBrains Mono",monospace; color:var(--ink-dim); display:flex; align-items:center; gap:8px;}
+.dot{width:8px; height:8px; border-radius:50%; background:#555; flex:none;}
+.dot.live{background:var(--ok); box-shadow:0 0 6px var(--ok);}
+video#camFeed{position:absolute; bottom:12px; right:12px; width:130px; height:98px; object-fit:cover;
+  border-radius:6px; border:1px solid var(--border); transform:scaleX(-1); opacity:.9; display:none;}
+canvas#camOverlay{position:absolute; bottom:12px; right:12px; width:130px; height:98px; border-radius:6px;
+  transform:scaleX(-1); display:none; pointer-events:none;}
+
+/* ---------- materials table ---------- */
+table{width:100%; border-collapse:collapse; font-size:.85rem;}
+table.mono{font-family:"JetBrains Mono",monospace;}
+th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--border);}
+th{color:var(--ink-dim); font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; font-weight:600;}
+tr:hover td{background:rgba(224,118,43,.06);}
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:6px;}
+.stat{background:var(--steel); border:1px solid var(--border); border-radius:6px; padding:12px 14px;}
+.stat .num{font-size:1.5rem; font-weight:700; font-family:"JetBrains Mono",monospace; color:var(--accent-2);}
+.stat .lbl{font-size:.72rem; color:var(--ink-dim); margin-top:2px;}
+
+footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72rem; font-family:"JetBrains Mono",monospace; border-top:1px solid var(--border);}
+
+@media print{
+  header, nav.tabs, .no-print, footer{display:none !important;}
+  main{padding:0; max-width:none;}
+  #printSheet{display:block !important;}
+  body{background:#fff; color:#000;}
+}
+#printSheet{display:none;}
+</style>
+</head>
+<body>
+
+<header class="app-head">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 22 L2 10 L13 4 L24 9 L24 22 Z" stroke="#bfe4ff" stroke-width="1.6" fill="none"/>
+        <path d="M2 10 L13 15 L24 9" stroke="#f5c542" stroke-width="1.2" fill="none"/>
+        <path d="M13 15 L13 22" stroke="#f5c542" stroke-width="1.2"/>
+        <path d="M7 22 L7 13" stroke="#4d7ea8" stroke-width="1.2"/>
+        <path d="M19 22 L19 11.5" stroke="#4d7ea8" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Sharoz<span>Cad</span>DrawingViewer</h1>
+      <p id="headSub">50 ft &times; 270 ft steel shed — 2D drafting &amp; 3D model</p>
+    </div>
+  </div>
+  <div class="head-right">
+    <button id="btnTheme" class="no-print" type="button">🖥️ Auto</button>
+    <div class="dev-credit">
+      Developed by <b class="mono" style="color:var(--ink)">sharoz.ifrahim</b><br>
+      <a href="https://facebook.com/sharoz.ifrahim" target="_blank" rel="noopener">facebook.com/sharoz.ifrahim</a>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="tab2d" class="active">2D DRAWING</button>
+  <button data-tab="tab3d">3D MODEL</button>
+  <button data-tab="tabbom">MATERIALS &amp; DIMENSIONS</button>
+  <button data-tab="tababout">ABOUT / SJ ENGINEERING</button>
+</nav>
+
+<main>
+
+  <!-- ============ SHARED PARAMETER CARD ============ -->
+  <div class="card no-print">
+    <h2>Structure parameters</h2>
+    <p class="hint">Matches the SJ Engineering steel-shed reference photo (gantry portal + bay shed). Change any value and click Generate — the 2D drawing, 3D model and material list all update together.</p>
+    <div class="controls-row">
+      <div class="field"><label>Width (ft)</label><input type="number" id="pWidth" value="50" min="10" max="500"></div>
+      <div class="field"><label>Length (ft)</label><input type="number" id="pLength" value="270" min="10" max="2000"></div>
+      <div class="field"><label>Bay spacing (ft)</label><input type="number" id="pBay" value="15" min="5" max="40"></div>
+      <div class="field"><label>Eave height (ft)</label><input type="number" id="pEave" value="16" min="8" max="60"></div>
+      <div class="field"><label>Gantry column ht (ft)</label><input type="number" id="pGantry" value="22" min="10" max="80"></div>
+      <div class="field"><label>Roof type</label>
+        <select id="pRoofType">
+          <option value="mono" selected>Mono-slope (single fall)</option>
+          <option value="dual">Dual-slope (gable, 2 side slopes)</option>
+        </select>
+      </div>
+      <div class="field"><label>Roof slope (rise:run)</label>
+        <select id="pSlope">
+          <option value="0" selected>Flat — no slope (0°)</option>
+          <option value="0.0417">1 : 24 (2.4°)</option>
+          <option value="0.0833">1 : 12 (4.8°)</option>
+          <option value="0.1667">1 : 6 (9.5°)</option>
+        </select>
+      </div>
+      <div class="field"><label>Purlin spacing (ft)</label><input type="number" id="pPurlin" value="5" min="2" max="10"></div>
+      <div class="btn-row"><button class="btn" id="btnGenerate">Generate</button></div>
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <span class="seg-label">Sheeting view</span>
+      <div class="seg-toggle" id="sheetToggle">
+        <button data-sheet="structure">Structure only</button>
+        <button data-sheet="auto" class="active">Auto (see-through)</button>
+        <button data-sheet="sheeted">Fully sheeted</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2D PANEL ============ -->
+  <section class="panel active" id="tab2d">
+    <div class="card">
+      <div class="view-switch no-print">
+        <button data-view="plan" class="active">Plan (top view)</button>
+        <button data-view="elevation">Side elevation</button>
+        <button data-view="section">Cross-section (frame)</button>
+        <button data-view="end">End elevation</button>
+      </div>
+      <div id="canvas2dWrap"><canvas id="canvas2d" width="1200" height="620"></canvas></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#eef2f5"></span> Structural steel outline</span>
+        <span><span class="swatch" style="background:#f5c542"></span> Dimension line</span>
+        <span><span class="swatch" style="background:#4d7ea8"></span> Grid / centerline</span>
+        <span><span class="swatch" style="background:#ff8a5c"></span> Gantry crane bay</span>
+        <span><span class="swatch fill" style="background:#9fb0bb"></span> Wall / roof sheeting</span>
+      </div>
+      <div class="btn-row no-print" style="margin-top:14px;">
+        <button class="btn" id="btnPrint">Print this drawing</button>
+        <button class="btn secondary" id="btnPNG">Download as PNG</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3D PANEL ============ -->
+  <section class="panel" id="tab3d">
+    <div class="card">
+      <h2>3D structural model</h2>
+      <p class="hint">Drag = rotate · scroll / pinch = zoom · right-drag = pan. Or turn on hand control below and use your webcam. Side walls, gable-end walls and roof sheeting follow the "Sheeting view" toggle above.</p>
+      <div id="canvas3dWrap">
+        <canvas id="canvas3d"></canvas>
+        <div class="overlay-panel">
+          <div><b>Sharoz</b> — SJ Engineering shed</div>
+          <div id="dimReadout" class="mono">50 × 270 ft</div>
+        </div>
+        <div class="hand-status no-print">
+          <span class="dot" id="handDot"></span>
+          <span id="handStatusText">Hand control off</span>
+        </div>
+        <video id="camFeed" autoplay playsinline muted></video>
+        <canvas id="camOverlay"></canvas>
+      </div>
+      <div class="btn-row no-print" style="margin-top:14px;">
+        <button class="btn secondary" id="btnHand">Enable hand control (camera)</button>
+        <button class="btn secondary" id="btnResetView">Reset view</button>
+        <button class="btn secondary" id="btnWire">Toggle wireframe</button>
+      </div>
+      <p class="hint" style="margin-top:10px;">Hand gestures: <b>pinch</b> (thumb + index closer/farther) zooms in/out. Move your open hand <b>left/right</b> to orbit, <b>up/down</b> to tilt. Requires camera permission in your browser; if it can't start, mouse/touch controls still work.</p>
+    </div>
+  </section>
+
+  <!-- ============ BOM PANEL ============ -->
+  <section class="panel" id="tabbom">
+    <div class="card">
+      <h2>Computed quantities</h2>
+      <p class="hint">All figures are derived live from the parameters above using standard portal-frame shed conventions. Treat as a preliminary take-off — a structural engineer should verify member sizes and loads before fabrication.</p>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+    <div class="card">
+      <h2>Full bill of quantities</h2>
+      <table class="mono" id="bomTable">
+        <thead><tr><th>Item</th><th>Size / spacing</th><th>Qty</th><th>Unit length / span</th><th>Total length</th><th>Notes</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Design assumptions used</h2>
+      <ul id="assumptionsList" class="mono" style="font-size:.8rem; line-height:1.9; color:var(--ink-dim); padding-left:18px;"></ul>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT PANEL ============ -->
+  <section class="panel" id="tababout">
+    <div class="card">
+      <h2>SJ Engineering — Mechanical &amp; Construction Solutions</h2>
+      <p class="hint" style="font-size:.85rem; line-height:1.7;">This viewer was built around SJ Engineering's structural steel shed shown in the reference photo: a gantry-crane portal at one end feeding into a bay shed, with a choice of mono-slope or dual-slope (gable) roof. SJ Engineering's services span structural steel fabrication &amp; erection, industrial piping, sandblasting &amp; protective coating, HVAC ducting &amp; insulation, mechanical engineering / plant maintenance, fire fighting &amp; safety systems, boiler installation, solar EPC, and industrial construction.</p>
+      <table style="margin-top:6px;">
+        <tr><td style="color:var(--ink-dim); width:140px;">Workshop</td><td>Plot # LS-05, ST # 1/3, Sector 21, Korangi Industrial Area, Karachi-74900, Pakistan</td></tr>
+        <tr><td style="color:var(--ink-dim);">Phone</td><td>+92 300 9239 576 · +92 300 9239 476</td></tr>
+        <tr><td style="color:var(--ink-dim);">Email</td><td>sjengineeringsolution07@gmail.com</td></tr>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>SharozCadDrawingViewer · built for SJ Engineering · developer: sharoz.ifrahim</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+(function(){
+"use strict";
+const FT = 0.3048; // meters per foot, used only for 3D scaling comment purposes
+
+/* ====================== THEME TOGGLE ====================== */
+const THEME_KEY = 'sharozcad-theme';
+function getStoredTheme(){ try{ return localStorage.getItem(THEME_KEY); }catch(e){ return null; } }
+function setStoredTheme(v){ try{ if(v) localStorage.setItem(THEME_KEY, v); else localStorage.removeItem(THEME_KEY); }catch(e){} }
+function applyTheme(mode){
+  const root = document.documentElement;
+  if(mode==='light') root.setAttribute('data-theme','light');
+  else if(mode==='dark') root.setAttribute('data-theme','dark');
+  else root.removeAttribute('data-theme');
+  const btn = document.getElementById('btnTheme');
+  if(btn) btn.textContent = mode==='light' ? '☀️ Light' : mode==='dark' ? '🌙 Dark' : '🖥️ Auto';
+}
+let themeMode = getStoredTheme() || 'auto';
+applyTheme(themeMode);
+document.getElementById('btnTheme').addEventListener('click', ()=>{
+  themeMode = themeMode==='auto' ? 'light' : (themeMode==='light' ? 'dark' : 'auto');
+  setStoredTheme(themeMode==='auto' ? null : themeMode);
+  applyTheme(themeMode);
+});
+
+/* ====================== SHEETING VIEW TOGGLE ====================== */
+let sheetMode = 'auto'; // 'structure' | 'auto' | 'sheeted'
+document.querySelectorAll('#sheetToggle button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#sheetToggle button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    sheetMode = b.dataset.sheet;
+    draw2D();
+    if(scene) applySheetMode();
+  });
+});
+
+/* ====================== TAB SWITCHING ====================== */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='tab3d'){ setTimeout(()=>{ resizeThree(); },50); }
+  });
+});
+
+/* ====================== PARAMETRIC MODEL ====================== */
+let model = null;
+
+function computeModel(){
+  const width   = parseFloat(document.getElementById('pWidth').value)||50;
+  const length  = parseFloat(document.getElementById('pLength').value)||270;
+  const bay     = parseFloat(document.getElementById('pBay').value)||15;
+  const eave    = parseFloat(document.getElementById('pEave').value)||16;
+  const gantryH = parseFloat(document.getElementById('pGantry').value)||22;
+  const roofType = document.getElementById('pRoofType').value || 'mono'; // 'mono' | 'dual'
+  const slopeRaw = parseFloat(document.getElementById('pSlope').value);
+  const slope   = isNaN(slopeRaw) ? 0 : slopeRaw; // 0 is a valid value (flat roof)
+  const purlinS = parseFloat(document.getElementById('pPurlin').value)||5;
+
+  const bays = Math.max(1, Math.ceil(length/bay));
+  const frames = bays+1;
+  const actualBay = length/bays;
+  const purlinSectionLen = 20; // ft, standard stock length
+  const purlinPiecesPerLine = Math.ceil(length/purlinSectionLen);
+
+  let rise, ridgeHeight, rafterLen, rafters, rafterTotalLen, purlinLines, purlinPieces, purlinTotalLen,
+      roofSheetArea, sideWallArea, endWallArea, frameHeights;
+
+  if(roofType==='dual'){
+    // Symmetric gable: ridge sits on the centerline, both sides fall the same amount.
+    const halfWidth = width/2;
+    rise = halfWidth*slope;
+    ridgeHeight = eave+rise;
+    const rafterLenHalf = Math.sqrt(halfWidth*halfWidth + rise*rise);
+    rafterLen = rafterLenHalf; // per-slope rafter length (there are 2 per frame)
+    rafters = frames*2;
+    rafterTotalLen = rafters*rafterLenHalf;
+
+    purlinLines = Math.max(2, Math.floor(rafterLenHalf/purlinS)+1);
+    purlinPieces = purlinLines*2*purlinPiecesPerLine; // both roof planes
+    purlinTotalLen = purlinLines*2*length;
+
+    roofSheetArea = 2*length*rafterLenHalf; // both slopes
+    sideWallArea = 2*length*eave; // both long side walls flat, at eave height
+    endWallArea = 2*(width*eave + 0.5*width*rise); // rectangle + gable triangle, both ends
+
+    frameHeights = [];
+    for(let i=0;i<frames;i++){
+      const isGantryFrame = (i===0 || i===1);
+      const h = isGantryFrame ? gantryH : eave;
+      frameHeights.push({low:h, high:h}); // both eaves level; ridge is roof-only
+    }
+  } else {
+    // Mono-slope: single fall across the full width.
+    rise = width*slope;
+    ridgeHeight = eave+rise;
+    rafterLen = Math.sqrt(width*width + rise*rise);
+    rafters = frames;
+    rafterTotalLen = rafters*rafterLen;
+
+    purlinLines = Math.max(2, Math.floor(rafterLen/purlinS)+1);
+    purlinPieces = purlinLines*purlinPiecesPerLine;
+    purlinTotalLen = purlinLines*length;
+
+    roofSheetArea = length*rafterLen;
+    sideWallArea = length*eave + length*(eave+rise);
+    endWallArea = 2*(width*((eave+ridgeHeight)/2));
+
+    frameHeights = [];
+    for(let i=0;i<frames;i++){
+      const isGantryFrame = (i===0 || i===1);
+      frameHeights.push({
+        low: isGantryFrame ? gantryH : eave,
+        high: isGantryFrame ? gantryH : (eave+rise)
+      });
+    }
+  }
+
+  // bracing: X-bracing in end 2 bays on both side walls + roof plane, 2 diagonals per braced bay per plane
+  const bracedBays = Math.min(2, bays);
+  const wallBracing = bracedBays*2*2; // 2 side walls, both ends
+  const roofBracing = bracedBays*2*(roofType==='dual'?2:1);
+  const braceMembers = wallBracing+roofBracing;
+  const braceLen = Math.sqrt(actualBay*actualBay + eave*eave);
+
+  // gantry crane runway (one side, full length) + corbel brackets at every frame
+  const craneRailLen = length*2; // two rails
+  const craneBrackets = frames;
+
+  // girts (wall purlins) - horizontal, 3 rows per wall height typical
+  const girtRows = Math.max(2, Math.round(eave/5));
+  const girtLines = girtRows*2; // both long walls
+  const girtTotalLen = girtLines*length;
+  const girtPieces = girtLines*Math.ceil(length/purlinSectionLen);
+
+  const columns = frames*2;
+  const columnTotalLen = columns*eave; // approx, gantry end columns taller (handled below)
+
+  const baseplates = columns;
+  const foundations = columns;
+
+  model = {width,length,bay:actualBay,bays,frames,eave,gantryH,roofType,slope,rise,rafterLen,ridgeHeight,
+    purlinS,purlinLines,purlinPieces,purlinTotalLen,
+    columns,columnTotalLen,rafters,rafterTotalLen,frameHeights,
+    bracedBays,braceMembers,braceLen,
+    craneRailLen,craneBrackets,
+    girtLines,girtTotalLen,girtPieces,
+    roofSheetArea,sideWallArea,endWallArea,wallSheetArea:sideWallArea+endWallArea,baseplates,foundations};
+  return model;
+}
+
+function fmt(n,d){ d=d===undefined?1:d; return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toLocaleString(); }
+
+/* ====================== BOM RENDER ====================== */
+function renderBOM(m){
+  const dual = m.roofType==='dual';
+  const stat = document.getElementById('statGrid');
+  stat.innerHTML = `
+    <div class="stat"><div class="num">${m.frames}</div><div class="lbl">Portal frames (@ ${fmt(m.bay)} ft c/c)</div></div>
+    <div class="stat"><div class="num">${m.columns}</div><div class="lbl">Columns, ${fmt(m.eave)} ft tall</div></div>
+    <div class="stat"><div class="num">${m.rafters}</div><div class="lbl">Rafters, ${fmt(m.rafterLen)} ft each${dual?' (2 per frame)':''}</div></div>
+    <div class="stat"><div class="num">${m.purlinPieces}</div><div class="lbl">Roof purlins (${m.purlinLines}${dual?' x 2 sides':''} lines)</div></div>
+    <div class="stat"><div class="num">${fmt(m.roofSheetArea)}</div><div class="lbl">Roof sheeting, sq ft</div></div>
+    <div class="stat"><div class="num">${fmt(m.wallSheetArea)}</div><div class="lbl">Wall sheeting (side + end), sq ft</div></div>
+  `;
+  const rows = [
+    ['Portal frame columns', `${fmt(m.eave)} ft standard / ${fmt(m.gantryH)} ft gantry end`, m.columns, `${fmt(m.eave)} ft`, `${fmt(m.columnTotalLen)} ft`, 'H-section, base-plated'],
+    [dual ? 'Rafters (dual-slope, both sides)' : (m.slope>0 ? 'Rafters (mono-slope)' : 'Rafters (flat / level)'),
+      dual ? `slope ${fmt(m.slope*100)}% each side, ridge on centerline` : (m.slope>0 ? `slope ${fmt(m.slope*100)}%` : 'level'),
+      m.rafters, `${fmt(m.rafterLen)} ft`, `${fmt(m.rafterTotalLen)} ft`,
+      dual ? `Rise ${fmt(m.rise)} ft over ${fmt(m.width/2)} ft half-span` : (m.slope>0 ? `Rise ${fmt(m.rise)} ft over ${fmt(m.width)} ft` : `Level span ${fmt(m.width)} ft`)],
+    ['Roof purlins', `spacing ${fmt(m.purlinS)} ft, ${m.purlinLines}${dual?' x 2':''} lines`, m.purlinPieces, '20 ft stock', `${fmt(m.purlinTotalLen)} ft`, 'C / Z section'],
+    ['Wall girts', `${m.girtLines} lines`, m.girtPieces, '20 ft stock', `${fmt(m.girtTotalLen)} ft`, 'Both long side walls'],
+    ['Wind bracing (wall + roof)', 'X-bracing, end bays', m.braceMembers, `${fmt(m.braceLen)} ft`, `${fmt(m.braceMembers*m.braceLen)} ft`, `${m.bracedBays} end bay(s) each side`],
+    ['Gantry crane runway rail', 'full length, 2 rails', 2, `${fmt(m.length)} ft`, `${fmt(m.craneRailLen)} ft`, 'One side of building'],
+    ['Crane bracket / corbel', 'at each frame', m.craneBrackets, '—', '—', 'Supports runway beam'],
+    ['Column base plates', 'per column', m.baseplates, '—', '—', 'Anchor bolted'],
+    ['RCC foundations (isolated)', 'per column', m.foundations, '—', '—', 'Size per soil report'],
+    ['Roof sheeting (profile)', dual ? `${fmt(m.rafterLen)} ft slope run x 2 sides` : `${fmt(m.rafterLen)} ft slope run`, 1, `${fmt(m.roofSheetArea)} sq ft`, `${fmt(m.roofSheetArea)} sq ft`, 'GI / pre-painted sheet'],
+    ['Side wall cladding', dual ? `${fmt(m.eave)} ft (level, both walls)` : `${fmt(m.eave)} ft / ${fmt(m.eave+m.rise)} ft`, 2, `${fmt(m.length)} ft run`, `${fmt(m.sideWallArea)} sq ft`, dual ? 'Both long walls, level eave' : 'Both long walls, low + high side'],
+    ['End (gable) wall cladding', `${fmt(m.width)} ft base`, 2, dual ? `eave ${fmt(m.eave)} ft + ${fmt(m.rise)} ft rise` : `avg ${fmt((m.eave+m.ridgeHeight)/2)} ft`, `${fmt(m.endWallArea)} sq ft`, 'Front &amp; rear gable ends'],
+  ];
+  document.querySelector('#bomTable tbody').innerHTML = rows.map(r=>
+    `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`
+  ).join('');
+
+  document.getElementById('assumptionsList').innerHTML = `
+    <li>${dual ? 'Dual-slope (gable) roof' : (m.slope>0 ? 'Mono-slope roof' : 'Flat (level) roof')}, single portal frame repeated at ${fmt(m.bay)} ft centers over ${m.bays} bays (${m.frames} frames total).</li>
+    <li>${dual
+        ? `Eave height ${fmt(m.eave)} ft on both long walls; ridge runs along the centerline at ${fmt(m.ridgeHeight)} ft, symmetric slope ${fmt(m.slope*100)}% each side.`
+        : (m.slope>0
+            ? `Eave height ${fmt(m.eave)} ft; high side ${fmt(m.ridgeHeight)} ft at slope ${fmt(m.slope*100)}%.`
+            : `Level eave height ${fmt(m.eave)} ft on both sides — no fall across the ${fmt(m.width)} ft span. Confirm roof drainage: a flat roof needs either internal drains/gutters or a minimum fall added.`)}</li>
+    <li>One gantry-crane portal bay at the building end, columns raised to ${fmt(m.gantryH)} ft to match the reference photo.</li>
+    <li>Both long side walls and both gable end walls are modeled as sheeted panels; toggle "Sheeting view" to inspect structure only, a see-through auto view, or fully sheeted.</li>
+    <li>Purlins and girts assumed on 20 ft stock lengths with standard splice overlap ignored (add ~5% for laps/waste).</li>
+    <li>Wind bracing (X-type) placed in the end two bays only; a full wind-load check should confirm this is adequate.</li>
+    <li>Member sizes, foundation depth, bolt grades and steel grade are not specified here — confirm with a licensed structural engineer before fabrication or ordering.</li>
+  `;
+  document.getElementById('dimReadout').textContent = `${fmt(m.width)} × ${fmt(m.length)} ft · eave ${fmt(m.eave)} ft${dual?' · gable':''}`;
+}
+
+/* ====================== 2D DRAWING ====================== */
+const cv = document.getElementById('canvas2d');
+const ctx = cv.getContext('2d');
+let currentView = 'plan';
+
+document.querySelectorAll('.view-switch button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.view-switch button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    currentView = b.dataset.view;
+    draw2D();
+  });
+});
+
+function draw2D(){
+  const m = model || computeModel();
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bp-navy').trim() || '#0a2540';
+  ctx.fillRect(0,0,cv.width,cv.height);
+  // grid dots (blueprint feel)
+  ctx.fillStyle = 'rgba(191,228,255,0.06)';
+  for(let x=0;x<cv.width;x+=24){ for(let y=0;y<cv.height;y+=24){ ctx.fillRect(x,y,1,1); } }
+
+  if(currentView==='plan') drawPlan(m);
+  else if(currentView==='elevation') drawElevation(m);
+  else if(currentView==='section') drawSection(m);
+  else drawEnd(m);
+}
+
+// fills a closed polygon with a sheeting tone + corrugation lines, respecting the sheetMode toggle
+function fillCladding(points, horizontal){
+  if(sheetMode==='structure' || !points.length) return;
+  const opacity = sheetMode==='sheeted' ? 0.55 : 0.22;
+  ctx.save();
+  ctx.beginPath();
+  points.forEach((p,i)=> i===0 ? ctx.moveTo(p[0],p[1]) : ctx.lineTo(p[0],p[1]));
+  ctx.closePath();
+  ctx.fillStyle = `rgba(159,176,187,${opacity})`;
+  ctx.fill();
+  ctx.clip();
+  ctx.strokeStyle = `rgba(238,242,245,${opacity*0.85})`;
+  ctx.lineWidth = 1;
+  const xs = points.map(p=>p[0]), ys = points.map(p=>p[1]);
+  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+  if(horizontal){
+    for(let y=minY; y<maxY; y+=7){ ctx.beginPath(); ctx.moveTo(minX-5,y); ctx.lineTo(maxX+5,y); ctx.stroke(); }
+  } else {
+    for(let x=minX; x<maxX; x+=7){ ctx.beginPath(); ctx.moveTo(x,minY-5); ctx.lineTo(x,maxY+5); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+function dimLine(x1,y1,x2,y2,label,offset){
+  ctx.strokeStyle = '#f5c542';
+  ctx.fillStyle = '#f5c542';
+  ctx.lineWidth = 1;
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  // ticks
+  [[x1,y1],[x2,y2]].forEach(p=>{
+    ctx.beginPath();
+    if(Math.abs(x2-x1) > Math.abs(y2-y1)){ ctx.moveTo(p[0],p[1]-5); ctx.lineTo(p[0],p[1]+5);} 
+    else { ctx.moveTo(p[0]-5,p[1]); ctx.lineTo(p[0]+5,p[1]); }
+    ctx.stroke();
+  });
+  const mx=(x1+x2)/2, my=(y1+y2)/2;
+  ctx.textAlign='center';
+  ctx.fillText(label, mx, my + (offset||-8));
+}
+
+function drawPlan(m){
+  const pad=70;
+  const availW = cv.width-2*pad, availH = cv.height-2*pad-40;
+  const scale = Math.min(availW/m.length, availH/m.width);
+  const w = m.length*scale, h = m.width*scale;
+  const ox = (cv.width-w)/2, oy = (cv.height-h)/2 + 10;
+
+  // roof + side-wall sheeting fill (top view = roof plane, offset border = wall thickness)
+  fillCladding([[ox,oy],[ox+w,oy],[ox+w,oy+h],[ox,oy+h]], false);
+
+  ctx.strokeStyle = '#eef2f5'; ctx.lineWidth = 2;
+  ctx.strokeRect(ox,oy,w,h);
+  // wall thickness indicator (inner offset line = side/end wall cladding line)
+  if(sheetMode!=='structure'){
+    ctx.strokeStyle = 'rgba(238,242,245,0.55)'; ctx.lineWidth = 1;
+    ctx.strokeRect(ox+6,oy+6,w-12,h-12);
+  }
+
+  // ridge line down the centerline for a dual-slope (gable) roof
+  if(m.roofType==='dual' && sheetMode!=='structure'){
+    ctx.strokeStyle = '#f5c542'; ctx.lineWidth = 1;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(ox,oy+h/2); ctx.lineTo(ox+w,oy+h/2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f5c542'; ctx.font='10px "JetBrains Mono",monospace'; ctx.textAlign='left';
+    ctx.fillText('RIDGE', ox+6, oy+h/2-6);
+  }
+
+  // column grid lines
+  ctx.strokeStyle = 'rgba(77,126,168,0.9)'; ctx.lineWidth=1;
+  for(let i=0;i<=m.frames-1;i++){
+    const x = ox + (i*m.bay)*scale;
+    ctx.beginPath(); ctx.moveTo(x,oy); ctx.lineTo(x,oy+h); ctx.stroke();
+    ctx.fillStyle='#eef2f5';
+    ctx.beginPath(); ctx.arc(x,oy,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x,oy+h,3,0,Math.PI*2); ctx.fill();
+  }
+  // gantry bay highlight (first bay)
+  ctx.fillStyle='rgba(255,138,92,0.18)';
+  ctx.fillRect(ox,oy,m.bay*scale,h);
+  ctx.strokeStyle='#ff8a5c';
+  ctx.strokeRect(ox,oy,m.bay*scale,h);
+  ctx.fillStyle='#ff8a5c'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='center';
+  ctx.fillText('GANTRY BAY', ox+m.bay*scale/2, oy+h/2);
+
+  dimLine(ox, oy-30, ox+w, oy-30, `${fmt(m.length)} ft`, -8);
+  dimLine(ox-40, oy, ox-40, oy+h, `${fmt(m.width)} ft`, -8);
+  ctx.save(); ctx.translate(ox-40, oy+h/2); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#f5c542'; ctx.textAlign='center'; ctx.fillText(`${fmt(m.width)} ft`, 0, -8); ctx.restore();
+
+  ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
+  ctx.fillText(`PLAN VIEW — ${m.frames} frames @ ${fmt(m.bay)} ft c/c — ${m.bays} bays — ${m.roofType==='dual'?'dual-slope roof, ridge on centerline':'side walls shown as perimeter cladding'}`, ox, oy+h+34);
+}
+
+function drawElevation(m){
+  const pad=70;
+  const availW = cv.width-2*pad, availH = cv.height-2*pad-40;
+  const scale = Math.min(availW/m.length, availH/m.ridgeHeight);
+  const w = m.length*scale, hEave = m.eave*scale;
+  const ox = (cv.width-w)/2, baseY = cv.height-90;
+
+  // Side elevation looks along the length at the long wall face. The wall itself is flat at eave
+  // height along its run (the roof slope runs across the width, not along the length) except at
+  // the raised gantry bay.
+  const points = [];
+  for(let i=0;i<m.frames;i++){
+    const x = ox+i*m.bay*scale;
+    const isGantry = (i===0||i===1);
+    const h = (isGantry ? m.gantryH : m.eave)*scale;
+    points.push([x, baseY-h]);
+  }
+
+  fillCladding([[ox,baseY], ...points, [ox+w,baseY]], false);
+
+  ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(ox,baseY);
+  points.forEach(p=>ctx.lineTo(p[0],p[1]));
+  ctx.lineTo(ox+w,baseY);
+  ctx.stroke();
+  ctx.beginPath();
+  points.forEach((p,i)=> i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+  ctx.strokeStyle='rgba(238,242,245,0.85)'; ctx.stroke();
+
+  // columns
+  ctx.strokeStyle='rgba(77,126,168,0.9)';
+  points.forEach(p=>{ ctx.beginPath(); ctx.moveTo(p[0],baseY); ctx.lineTo(p[0],p[1]); ctx.stroke(); });
+
+  // gantry columns / bay highlight
+  ctx.strokeStyle='#ff8a5c'; ctx.lineWidth=2;
+  const gH = m.gantryH*scale;
+  ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-gH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox+m.bay*scale,baseY); ctx.lineTo(ox+m.bay*scale,baseY-gH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox,baseY-gH); ctx.lineTo(ox+m.bay*scale,baseY-gH); ctx.stroke();
+  ctx.fillStyle='#ff8a5c'; ctx.font='10px "JetBrains Mono",monospace';
+  ctx.fillText('GANTRY', ox+6, baseY-gH-6);
+
+  // ground line
+  ctx.strokeStyle='#4d7ea8'; ctx.beginPath(); ctx.moveTo(ox-20,baseY); ctx.lineTo(ox+w+20,baseY); ctx.stroke();
+
+  dimLine(ox, baseY+30, ox+w, baseY+30, `${fmt(m.length)} ft`, -8);
+  dimLine(ox-40, baseY, ox-40, baseY-hEave, `${fmt(m.eave)} ft`, -8);
+  ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
+  ctx.fillText(`SIDE ELEVATION — level eave ${fmt(m.eave)} ft along run (gantry bay raised to ${fmt(m.gantryH)} ft) — ${m.roofType==='dual'?'dual-slope':'mono-slope'} roof runs across the width, see Section/End views`, ox, baseY+55);
+}
+
+function drawSection(m){
+  const pad=90;
+  const availW=cv.width-2*pad, availH=cv.height-2*pad-40;
+  const scale = Math.min(availW/m.width, availH/m.ridgeHeight);
+  const w=m.width*scale, hEave=m.eave*scale, hRidge=m.ridgeHeight*scale;
+  const ox=(cv.width-w)/2, baseY=cv.height-90;
+
+  if(m.roofType==='dual'){
+    const midX = ox+w/2;
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[midX,baseY-hRidge],[midX,baseY]], false);
+    fillCladding([[midX,baseY],[midX,baseY-hRidge],[ox+w,baseY-hEave],[ox+w,baseY]], false);
+
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(midX,baseY-hRidge);
+    ctx.lineTo(ox+w,baseY-hEave);
+    ctx.lineTo(ox+w,baseY);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,baseY-hEave); ctx.lineTo(midX,baseY-hRidge); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(midX,baseY-hRidge); ctx.lineTo(ox+w,baseY-hEave); ctx.stroke();
+
+    // ridge marker
+    ctx.fillStyle='#f5c542'; ctx.beginPath(); ctx.arc(midX,baseY-hRidge,3,0,Math.PI*2); ctx.fill();
+    ctx.font='10px "JetBrains Mono",monospace'; ctx.textAlign='center';
+    ctx.fillText('RIDGE', midX, baseY-hRidge-8);
+
+    // purlins on both slopes
+    const nP = m.purlinLines;
+    ctx.strokeStyle='#4d7ea8';
+    for(let side=0; side<2; side++){
+      for(let i=0;i<nP;i++){
+        const t=i/(nP-1);
+        const x = side===0 ? ox+t*(midX-ox) : midX+t*(ox+w-midX);
+        const y = side===0 ? baseY-hEave-(hRidge-hEave)*t : baseY-hRidge+(hRidge-hEave)*t;
+        ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.stroke();
+      }
+    }
+    dimLine(ox+w+40,baseY,ox+w+40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
+  } else {
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(ox+w,baseY-hRidge); ctx.lineTo(ox+w,baseY);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,baseY-hEave); ctx.lineTo(ox+w,baseY-hRidge); ctx.stroke();
+
+    // purlins as ticks along rafter
+    const nP = m.purlinLines;
+    ctx.strokeStyle='#4d7ea8';
+    for(let i=0;i<nP;i++){
+      const t=i/(nP-1);
+      const x=ox+t*w, y=baseY-hEave-(hRidge-hEave)*t;
+      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.stroke();
+    }
+    dimLine(ox+w+40,baseY,ox+w+40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
+  }
+
+  // ground
+  ctx.strokeStyle='#4d7ea8'; ctx.beginPath(); ctx.moveTo(ox-20,baseY); ctx.lineTo(ox+w+20,baseY); ctx.stroke();
+
+  dimLine(ox,baseY+30,ox+w,baseY+30,`${fmt(m.width)} ft`,-8);
+  dimLine(ox-40,baseY,ox-40,baseY-hEave,`${fmt(m.eave)} ft`,-8);
+
+  ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
+  ctx.fillText(`CROSS-SECTION — ${m.roofType==='dual' ? 'dual-slope (gable), 2 side slopes' : (m.slope>0?'mono-slope':'flat / level')} frame, ${m.purlinLines}${m.roofType==='dual'?' x 2':''} purlin lines @ ${fmt(m.purlinS)} ft`, ox, baseY+55);
+}
+
+function drawEnd(m){
+  const pad=90;
+  const availW=cv.width-2*pad, availH=cv.height-2*pad-40;
+  const scale = Math.min(availW/m.width, availH/m.ridgeHeight);
+  const w=m.width*scale, hEave=m.eave*scale, hRidge=m.ridgeHeight*scale;
+  const ox=(cv.width-w)/2, baseY=cv.height-90;
+
+  if(m.roofType==='dual'){
+    const midX = ox+w/2;
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[midX,baseY-hRidge],[midX,baseY]], false);
+    fillCladding([[midX,baseY],[midX,baseY-hRidge],[ox+w,baseY-hEave],[ox+w,baseY]], false);
+
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(midX,baseY-hRidge);
+    ctx.lineTo(ox+w,baseY-hEave);
+    ctx.lineTo(ox+w,baseY);
+    ctx.closePath(); ctx.stroke();
+
+    // bracing X on each half
+    ctx.strokeStyle='rgba(255,138,92,0.85)';
+    ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(midX,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(midX,baseY); ctx.lineTo(ox,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(midX,baseY); ctx.lineTo(ox+w,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox+w,baseY); ctx.lineTo(midX,baseY-hEave*0.8); ctx.stroke();
+  } else {
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(ox+w,baseY-hRidge); ctx.lineTo(ox+w,baseY);
+    ctx.closePath(); ctx.stroke();
+    // bracing X
+    ctx.strokeStyle='rgba(255,138,92,0.85)';
+    ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(ox+w,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox+w,baseY); ctx.lineTo(ox,baseY-hEave*0.8); ctx.stroke();
+  }
+
+  ctx.strokeStyle='#4d7ea8'; ctx.beginPath(); ctx.moveTo(ox-20,baseY); ctx.lineTo(ox+w+20,baseY); ctx.stroke();
+  dimLine(ox,baseY+30,ox+w,baseY+30,`${fmt(m.width)} ft`,-8);
+  dimLine(ox-40,baseY,ox-40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
+  ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
+  ctx.fillText(`END ELEVATION — gable end with wind bracing + end-wall cladding${m.roofType==='dual'?' (ridge centered)':''}`, ox, baseY+55);
+}
+
+document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+document.getElementById('btnPNG').addEventListener('click', ()=>{
+  const a=document.createElement('a');
+  a.download = `SharozCadDrawingViewer_${currentView}.png`;
+  a.href = cv.toDataURL('image/png');
+  a.click();
+});
+
+/* ====================== 3D VIEW (three.js) ====================== */
+let scene, camera, renderer, group, wireOn=false;
+let sheetMeshes = [];
+let corrugatedTex = null;
+let orbit = { az: 0.6, pol: 1.15, dist: 0, target:new THREE.Vector3() };
+
+function initThree(){
+  const wrap = document.getElementById('canvas3dWrap');
+  const cvs = document.getElementById('canvas3d');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1117);
+  scene.fog = new THREE.Fog(0x0d1117, 50, 400);
+
+  camera = new THREE.PerspectiveCamera(45, wrap.clientWidth/560, 0.1, 2000);
+  renderer = new THREE.WebGLRenderer({canvas:cvs, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(wrap.clientWidth, 560);
+
+  scene.add(new THREE.AmbientLight(0xffffff,0.55));
+  const dl = new THREE.DirectionalLight(0xffffff,0.9);
+  dl.position.set(40,60,30); scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0x88aaff,0.3);
+  dl2.position.set(-40,20,-30); scene.add(dl2);
+
+  group = new THREE.Group();
+  scene.add(group);
+
+  window.addEventListener('resize', resizeThree);
+  attachMouseControls(cvs);
+  animateThree();
+}
+
+function resizeThree(){
+  const wrap = document.getElementById('canvas3dWrap');
+  if(!camera||!renderer) return;
+  const w = wrap.clientWidth, h = 560;
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+}
+
+function makeCorrugatedTexture(){
+  const c = document.createElement('canvas'); c.width=64; c.height=64;
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#8b98a3'; cx.fillRect(0,0,64,64);
+  cx.strokeStyle = 'rgba(255,255,255,0.35)'; cx.lineWidth=2;
+  for(let x=0;x<64;x+=8){ cx.beginPath(); cx.moveTo(x,0); cx.lineTo(x,64); cx.stroke(); }
+  cx.strokeStyle='rgba(0,0,0,0.18)';
+  for(let x=4;x<64;x+=8){ cx.beginPath(); cx.moveTo(x,0); cx.lineTo(x,64); cx.stroke(); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function sheetMaterial(repeatX, repeatY){
+  if(!corrugatedTex) corrugatedTex = makeCorrugatedTexture();
+  const tex = corrugatedTex.clone();
+  tex.needsUpdate = true;
+  tex.repeat.set(Math.max(1,repeatX||8), Math.max(1,repeatY||2));
+  return new THREE.MeshStandardMaterial({
+    map:tex, color:0xffffff, metalness:0.35, roughness:0.55,
+    side:THREE.DoubleSide, transparent:true, opacity:0.4
+  });
+}
+
+function makeWallQuad(p1,p2,p3,p4,mat){
+  const geo = new THREE.BufferGeometry();
+  const vertices = new Float32Array([
+    p1.x,p1.y,p1.z, p2.x,p2.y,p2.z, p3.x,p3.y,p3.z,
+    p1.x,p1.y,p1.z, p3.x,p3.y,p3.z, p4.x,p4.y,p4.z
+  ]);
+  geo.setAttribute('position', new THREE.BufferAttribute(vertices,3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0,0, 1,0, 1,1, 0,0, 1,1, 0,1]),2));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo,mat);
+  mesh.userData.isSheet = true;
+  group.add(mesh);
+  sheetMeshes.push(mesh);
+  return mesh;
+}
+
+function buildEnvelope(m,S,halfL,halfW){
+  const wallMat = sheetMaterial(Math.max(4,Math.round(m.length/12)), 3);
+  // long side walls (low side x=-halfW, high side x=+halfW), one quad per bay segment
+  for(let side=0; side<2; side++){
+    const x = side===0 ? -halfW : halfW;
+    for(let i=0;i<m.frames-1;i++){
+      const z0 = -halfL + i*m.bay*S;
+      const z1 = -halfL + (i+1)*m.bay*S;
+      const h0 = side===0 ? m.frameHeights[i].low   : m.frameHeights[i].high;
+      const h1 = side===0 ? m.frameHeights[i+1].low : m.frameHeights[i+1].high;
+      makeWallQuad(
+        new THREE.Vector3(x,0,z0),
+        new THREE.Vector3(x,0,z1),
+        new THREE.Vector3(x,h1,z1),
+        new THREE.Vector3(x,h0,z0),
+        wallMat
+      );
+    }
+  }
+  // gable end walls (front + rear)
+  const endMat = sheetMaterial(Math.max(3,Math.round(m.width/10)), 3);
+  [0, m.frames-1].forEach(idx=>{
+    const z = -halfL + idx*m.bay*S;
+    if(m.roofType==='dual'){
+      // triangular gable on top of a rectangular wall, ridge centered at x=0
+      const eaveH = m.frameHeights[idx].low;
+      const ridgeH = (idx===0||idx===1) ? eaveH : m.ridgeHeight*S; // gantry bay stays flat-topped
+      // rectangle part
+      makeWallQuad(
+        new THREE.Vector3(-halfW,0,z),
+        new THREE.Vector3(halfW,0,z),
+        new THREE.Vector3(halfW,eaveH,z),
+        new THREE.Vector3(-halfW,eaveH,z),
+        endMat
+      );
+      // triangular gable (as a thin quad collapsing one edge to the ridge point)
+      if(ridgeH>eaveH){
+        makeWallQuad(
+          new THREE.Vector3(-halfW,eaveH,z),
+          new THREE.Vector3(halfW,eaveH,z),
+          new THREE.Vector3(0,ridgeH,z),
+          new THREE.Vector3(0,ridgeH,z),
+          endMat
+        );
+      }
+    } else {
+      const hLow = m.frameHeights[idx].low, hHigh = m.frameHeights[idx].high;
+      makeWallQuad(
+        new THREE.Vector3(-halfW,0,z),
+        new THREE.Vector3(halfW,0,z),
+        new THREE.Vector3(halfW,hHigh,z),
+        new THREE.Vector3(-halfW,hLow,z),
+        endMat
+      );
+    }
+  });
+}
+
+function applySheetMode(){
+  sheetMeshes.forEach(mesh=>{
+    if(sheetMode==='structure'){ mesh.visible=false; return; }
+    mesh.visible = true;
+    mesh.material.opacity = sheetMode==='sheeted' ? 0.95 : 0.4;
+    mesh.material.wireframe = wireOn;
+  });
+}
+
+function buildThreeModel(m){
+  while(group.children.length) group.remove(group.children[0]);
+  sheetMeshes = [];
+
+  const S = 1; // 1 unit = 1 ft
+  const steelMat = new THREE.MeshStandardMaterial({color:0x9fb0bb, metalness:0.6, roughness:0.4});
+  const gantryMat = new THREE.MeshStandardMaterial({color:0xe0762b, metalness:0.5, roughness:0.45});
+  const purlinMat = new THREE.MeshStandardMaterial({color:0x5a7891, metalness:0.5, roughness:0.5});
+
+  const halfL = m.length*S/2, halfW = m.width*S/2;
+  const eaveY = m.eave*S, ridgeY = m.ridgeHeight*S;
+
+  // ground grid
+  const grid = new THREE.GridHelper(Math.max(m.length,m.width)*1.4, 40, 0x2a3340, 0x1a222c);
+  grid.position.y = 0;
+  group.add(grid);
+
+  const colR = 0.55;
+  function makeColumn(x,z,h,mat){
+    const geo = new THREE.CylinderGeometry(colR,colR,h,10);
+    const mesh = new THREE.Mesh(geo,mat);
+    mesh.position.set(x, h/2, z);
+    group.add(mesh);
+  }
+  function makeBeam(x1,y1,z1,x2,y2,z2,mat,thick){
+    thick = thick||0.4;
+    const dir = new THREE.Vector3(x2-x1,y2-y1,z2-z1);
+    const len = dir.length();
+    const geo = new THREE.BoxGeometry(thick,thick,len);
+    const mesh = new THREE.Mesh(geo,mat);
+    mesh.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2);
+    mesh.lookAt(new THREE.Vector3(x2,y2,z2));
+    group.add(mesh);
+  }
+
+  // frames along length (z axis), width along x axis
+  for(let i=0;i<m.frames;i++){
+    const z = -halfL + i*m.bay*S;
+    const isGantryFrame = (i===0 || i===1);
+    const h1 = isGantryFrame ? m.gantryH*S : eaveY;
+    const h2 = isGantryFrame ? m.gantryH*S : (m.roofType==='dual' ? eaveY : ridgeY);
+    const mat = isGantryFrame ? gantryMat : steelMat;
+    makeColumn(-halfW, z, h1, mat);
+    makeColumn(halfW, z, h2, mat);
+    if(m.roofType==='dual' && !isGantryFrame){
+      // two rafters meeting at ridge
+      makeBeam(-halfW,h1,z, 0,ridgeY,z, mat, 0.5);
+      makeBeam(0,ridgeY,z, halfW,h2,z, mat, 0.5);
+    } else {
+      makeBeam(-halfW,h1,z, halfW,h2,z, mat, 0.5); // rafter (or flat gantry tie)
+    }
+  }
+
+  // purlins spanning length, at intervals across the slope
+  if(m.roofType==='dual'){
+    for(let side=0; side<2; side++){
+      const dir = side===0 ? -1 : 1;
+      for(let i=0;i<m.purlinLines;i++){
+        const t = i/(m.purlinLines-1);
+        const x = dir*t*halfW;
+        const y = eaveY + t*(ridgeY-eaveY);
+        makeBeam(x,y,-halfL, x,y,halfL, purlinMat, 0.22);
+      }
+    }
+  } else {
+    for(let i=0;i<m.purlinLines;i++){
+      const t = i/(m.purlinLines-1);
+      const x = -halfW + t*m.width*S;
+      const y = eaveY + t*m.rise*S;
+      makeBeam(x,y,-halfL, x,y,halfL, purlinMat, 0.22);
+    }
+  }
+
+  // roof plane(s) — sheeting, built as quads so they always track the current slope/ridge exactly
+  if(m.roofType==='dual'){
+    const roofMatL = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
+    const roofMatR = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
+    // left slope: -halfW (eave) to 0 (ridge)
+    const leftMesh = makeWallQuad(
+      new THREE.Vector3(-halfW,eaveY,-halfL),
+      new THREE.Vector3(-halfW,eaveY,halfL),
+      new THREE.Vector3(0,ridgeY,halfL),
+      new THREE.Vector3(0,ridgeY,-halfL),
+      roofMatL
+    );
+    // right slope: 0 (ridge) to +halfW (eave)
+    const rightMesh = makeWallQuad(
+      new THREE.Vector3(0,ridgeY,-halfL),
+      new THREE.Vector3(0,ridgeY,halfL),
+      new THREE.Vector3(halfW,eaveY,halfL),
+      new THREE.Vector3(halfW,eaveY,-halfL),
+      roofMatR
+    );
+  } else {
+    const roofMat = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
+    makeWallQuad(
+      new THREE.Vector3(-halfW,eaveY,-halfL),
+      new THREE.Vector3(-halfW,eaveY,halfL),
+      new THREE.Vector3(halfW,ridgeY,halfL),
+      new THREE.Vector3(halfW,ridgeY,-halfL),
+      roofMat
+    );
+  }
+
+  // side walls + gable end walls
+  buildEnvelope(m,S,halfL,halfW);
+
+  // gantry crane runway beam (along length, at gantry side, elevated)
+  const craneY = m.gantryH*S - 1.2;
+  makeBeam(-halfW, craneY, -halfL, -halfW, craneY, halfL, gantryMat, 0.35);
+  makeBeam(halfW, craneY, -halfL, halfW, craneY, halfL, gantryMat, 0.35);
+  // crane trolley beam sample at gantry bay
+  makeBeam(-halfW, craneY, -halfL+ m.bay*S*0.5, halfW, craneY, -halfL+m.bay*S*0.5, gantryMat, 0.35);
+
+  // end bracing (X) at both ends
+  [-halfL, halfL].forEach(z=>{
+    const h = m.eave*S;
+    const geo1 = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-halfW,0,z), new THREE.Vector3(halfW,h,z)
+    ]);
+    const geo2 = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(halfW,0,z), new THREE.Vector3(-halfW,h,z)
+    ]);
+    const lm = new THREE.LineBasicMaterial({color:0xff8a5c});
+    group.add(new THREE.Line(geo1,lm));
+    group.add(new THREE.Line(geo2,lm));
+  });
+
+  applySheetMode();
+
+  // center orbit target & camera distance based on size
+  const maxDim = Math.max(m.length,m.width,m.ridgeHeight);
+  orbit.dist = maxDim*1.25;
+  orbit.target.set(0, m.eave*S*0.5, 0);
+  updateCameraFromOrbit();
+}
+
+function updateCameraFromOrbit(){
+  const d = orbit.dist;
+  const x = d*Math.sin(orbit.pol)*Math.sin(orbit.az);
+  const y = d*Math.cos(orbit.pol);
+  const z = d*Math.sin(orbit.pol)*Math.cos(orbit.az);
+  camera.position.set(orbit.target.x+x, Math.max(2,orbit.target.y+y), orbit.target.z+z);
+  camera.lookAt(orbit.target);
+}
+
+function animateThree(){
+  requestAnimationFrame(animateThree);
+  renderer.render(scene,camera);
+}
+
+/* mouse / touch orbit controls */
+function attachMouseControls(cvs){
+  let dragging=false, panning=false, lastX=0,lastY=0;
+  cvs.addEventListener('mousedown', e=>{ dragging = (e.button===0); panning=(e.button===2); lastX=e.clientX; lastY=e.clientY; });
+  window.addEventListener('mouseup', ()=>{dragging=false;panning=false;});
+  window.addEventListener('mousemove', e=>{
+    if(!dragging && !panning) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+    if(dragging){
+      orbit.az -= dx*0.006;
+      orbit.pol = Math.min(Math.max(orbit.pol - dy*0.006, 0.15), Math.PI-0.15);
+      updateCameraFromOrbit();
+    } else if(panning){
+      orbit.target.x -= dx*0.05;
+      orbit.target.y += dy*0.05;
+      updateCameraFromOrbit();
+    }
+  });
+  cvs.addEventListener('contextmenu', e=>e.preventDefault());
+  cvs.addEventListener('wheel', e=>{
+    e.preventDefault();
+    orbit.dist = Math.max(10, orbit.dist * (1 + e.deltaY*0.001));
+    updateCameraFromOrbit();
+  }, {passive:false});
+
+  // touch
+  let touchLastDist=null, touchLastX=0, touchLastY=0;
+  cvs.addEventListener('touchstart', e=>{
+    if(e.touches.length===1){ touchLastX=e.touches[0].clientX; touchLastY=e.touches[0].clientY; }
+    else if(e.touches.length===2){ touchLastDist = touchDist(e.touches); }
+  });
+  cvs.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if(e.touches.length===1){
+      const dx=e.touches[0].clientX-touchLastX, dy=e.touches[0].clientY-touchLastY;
+      touchLastX=e.touches[0].clientX; touchLastY=e.touches[0].clientY;
+      orbit.az -= dx*0.006;
+      orbit.pol = Math.min(Math.max(orbit.pol - dy*0.006, 0.15), Math.PI-0.15);
+      updateCameraFromOrbit();
+    } else if(e.touches.length===2){
+      const d = touchDist(e.touches);
+      if(touchLastDist){ orbit.dist = Math.max(10, orbit.dist * (touchLastDist/d)); updateCameraFromOrbit(); }
+      touchLastDist = d;
+    }
+  }, {passive:false});
+  function touchDist(t){ const dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+}
+
+document.getElementById('btnResetView').addEventListener('click', ()=>{
+  orbit.az=0.6; orbit.pol=1.15;
+  const m = model||computeModel();
+  orbit.dist = Math.max(m.length,m.width,m.ridgeHeight)*1.25;
+  updateCameraFromOrbit();
+});
+document.getElementById('btnWire').addEventListener('click', ()=>{
+  wireOn=!wireOn;
+  group.traverse(o=>{ if(o.isMesh) o.material.wireframe = wireOn; });
+});
+
+/* ====================== HAND GESTURE CONTROL ====================== */
+let handsActive=false, handsCtrl=null, camUtil=null;
+const handStatusText = document.getElementById('handStatusText');
+const handDot = document.getElementById('handDot');
+const camFeed = document.getElementById('camFeed');
+const camOverlay = document.getElementById('camOverlay');
+const octx = camOverlay.getContext('2d');
+
+document.getElementById('btnHand').addEventListener('click', async ()=>{
+  if(handsActive){ stopHands(); return; }
+  try{
+    handStatusText.textContent = 'Starting camera…';
+    await startHands();
+  }catch(err){
+    handStatusText.textContent = 'Camera unavailable — using mouse/touch instead';
+    console.warn('Hand control error', err);
+  }
+});
+
+let lastHandCenter=null, smoothedPinch=null;
+
+async function startHands(){
+  if(typeof Hands === 'undefined' || typeof Camera === 'undefined'){
+    throw new Error('MediaPipe libraries not loaded');
+  }
+  handsCtrl = new Hands({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+  handsCtrl.setOptions({maxNumHands:1, modelComplexity:0, minDetectionConfidence:0.6, minTrackingConfidence:0.5});
+  handsCtrl.onResults(onHandResults);
+
+  camFeed.style.display='block'; camOverlay.style.display='block';
+  camUtil = new Camera(camFeed, {
+    onFrame: async ()=>{ await handsCtrl.send({image:camFeed}); },
+    width:320, height:240
+  });
+  await camUtil.start();
+  handsActive=true;
+  handDot.classList.add('live');
+  handStatusText.textContent = 'Hand control live';
+  document.getElementById('btnHand').textContent = 'Disable hand control';
+}
+
+function stopHands(){
+  handsActive=false;
+  handDot.classList.remove('live');
+  handStatusText.textContent = 'Hand control off';
+  document.getElementById('btnHand').textContent = 'Enable hand control (camera)';
+  camFeed.style.display='none'; camOverlay.style.display='none';
+  if(camUtil && camUtil.stop) camUtil.stop();
+  const s = camFeed.srcObject; if(s){ s.getTracks().forEach(t=>t.stop()); }
+  lastHandCenter=null; smoothedPinch=null;
+}
+
+function onHandResults(results){
+  camOverlay.width = 130; camOverlay.height = 98;
+  octx.clearRect(0,0,130,98);
+  if(!results.multiHandLandmarks || !results.multiHandLandmarks.length){ lastHandCenter=null; return; }
+  const lm = results.multiHandLandmarks[0];
+
+  // draw simple landmark dots on overlay
+  octx.fillStyle = '#e0762b';
+  lm.forEach(p=>{ octx.beginPath(); octx.arc(p.x*130,p.y*98,2,0,Math.PI*2); octx.fill(); });
+
+  const thumb = lm[4], index = lm[8];
+  const pinchDist = Math.hypot(thumb.x-index.x, thumb.y-index.y);
+  const cx = (thumb.x+index.x)/2, cy=(thumb.y+index.y)/2;
+
+  if(smoothedPinch===null) smoothedPinch = pinchDist;
+  smoothedPinch = smoothedPinch*0.75 + pinchDist*0.25;
+
+  if(lastHandCenter){
+    const dx = cx - lastHandCenter.x;
+    const dy = cy - lastHandCenter.y;
+    orbit.az -= dx*3.2;
+    orbit.pol = Math.min(Math.max(orbit.pol - dy*3.2, 0.15), Math.PI-0.15);
+  }
+  lastHandCenter = {x:cx,y:cy};
+
+  // pinch controls zoom: smaller pinch distance -> zoom in
+  const zoomFactor = THREE.MathUtils.clamp(smoothedPinch,0.02,0.35);
+  const m = model||computeModel();
+  const baseDist = Math.max(m.length,m.width,m.ridgeHeight)*1.25;
+  orbit.dist = baseDist * (0.5 + zoomFactor*2.2);
+
+  updateCameraFromOrbit();
+}
+
+/* ====================== GENERATE ====================== */
+document.getElementById('btnGenerate').addEventListener('click', regenerateAll);
+document.getElementById('pRoofType').addEventListener('change', regenerateAll);
+
+function regenerateAll(){
+  const m = computeModel();
+  renderBOM(m);
+  draw2D();
+  if(!scene) initThree();
+  buildThreeModel(m);
+  resizeThree();
+}
+
+/* init */
+window.addEventListener('load', ()=>{
+  regenerateAll();
+});
+})();
+</script>
+</body>
+</html>
