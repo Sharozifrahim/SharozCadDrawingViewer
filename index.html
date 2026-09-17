@@ -167,6 +167,39 @@ video#camFeed{position:absolute; bottom:12px; right:12px; width:130px; height:98
 canvas#camOverlay{position:absolute; bottom:12px; right:12px; width:130px; height:98px; border-radius:6px;
   transform:scaleX(-1); display:none; pointer-events:none;}
 
+/* ---------- part label overlay ---------- */
+#labelLayer{position:absolute; inset:0; pointer-events:none; overflow:hidden;}
+.part-label{
+  position:absolute; transform:translate(-50%,-100%); pointer-events:auto;
+  display:flex; flex-direction:column; align-items:center; cursor:pointer;
+  transition:opacity .12s ease; will-change:transform;
+}
+.part-label .tag{
+  background:rgba(13,17,23,.86); border:1px solid var(--border); color:var(--ink);
+  font-family:"JetBrains Mono",monospace; font-size:.66rem; padding:3px 7px; border-radius:4px;
+  white-space:nowrap; letter-spacing:.02em; backdrop-filter:blur(2px);
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.part-label .stem{width:1px; height:8px; background:var(--border);}
+.part-label:hover .tag, .part-label.pinned .tag{border-color:var(--accent); color:var(--accent-2);}
+.part-label.cat-frame .tag{border-left:3px solid var(--ink-dim);}
+.part-label.cat-gantry .tag{border-left:3px solid var(--accent);}
+.part-label.cat-purlin .tag{border-left:3px solid #5a7891;}
+.part-label.cat-sheet .tag{border-left:3px solid #9fb0bb;}
+.part-label.cat-brace .tag{border-left:3px solid #ff8a5c;}
+.label-detail{
+  position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:rgba(10,14,18,.96); border:1px solid var(--accent); border-radius:6px;
+  padding:9px 11px; font-size:.7rem; color:var(--ink-dim); width:190px;
+  font-family:"JetBrains Mono",monospace; line-height:1.6; z-index:5; box-shadow:0 4px 14px rgba(0,0,0,.5);
+  display:none;
+}
+.part-label.pinned .label-detail{display:block;}
+.label-detail b{color:var(--ink); display:block; margin-bottom:3px; font-size:.72rem;}
+.label-toggle-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.chk{display:inline-flex; align-items:center; gap:6px; font-family:"JetBrains Mono",monospace; font-size:.76rem; color:var(--ink-dim); cursor:pointer;}
+.chk input{accent-color:var(--accent);}
+
 /* ---------- materials table ---------- */
 table{width:100%; border-collapse:collapse; font-size:.85rem;}
 table.mono{font-family:"JetBrains Mono",monospace;}
@@ -228,20 +261,35 @@ footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72
   <!-- ============ SHARED PARAMETER CARD ============ -->
   <div class="card no-print">
     <h2>Structure parameters</h2>
-    <p class="hint">Matches the SJ Engineering steel-shed reference photo (gantry portal + mono-slope bay shed). Change any value and click Generate — the 2D drawing, 3D model and material list all update together.</p>
+    <p class="hint">Matches the SJ Engineering steel-shed reference photo (gantry portal + bay shed). Change any value and click Generate — the 2D drawing, 3D model and material list all update together.</p>
     <div class="controls-row">
       <div class="field"><label>Width (ft)</label><input type="number" id="pWidth" value="50" min="10" max="500"></div>
       <div class="field"><label>Length (ft)</label><input type="number" id="pLength" value="270" min="10" max="2000"></div>
       <div class="field"><label>Bay spacing (ft)</label><input type="number" id="pBay" value="15" min="5" max="40"></div>
       <div class="field"><label>Eave height (ft)</label><input type="number" id="pEave" value="16" min="8" max="60"></div>
       <div class="field"><label>Gantry column ht (ft)</label><input type="number" id="pGantry" value="22" min="10" max="80"></div>
+      <div class="field"><label>Roof type</label>
+        <select id="pRoofType">
+          <option value="mono" selected>Mono-slope (single fall)</option>
+          <option value="dual">Dual-slope (gable, 2 side slopes)</option>
+        </select>
+      </div>
       <div class="field"><label>Roof slope (rise:run)</label>
         <select id="pSlope">
           <option value="0" selected>Flat — no slope (0°)</option>
           <option value="0.0417">1 : 24 (2.4°)</option>
           <option value="0.0833">1 : 12 (4.8°)</option>
           <option value="0.1667">1 : 6 (9.5°)</option>
+          <option value="custom">Custom rise : run…</option>
         </select>
+      </div>
+      <div class="field" id="customSlopeField" style="display:none;">
+        <label>Custom slope — rise : run</label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input type="number" id="pSlopeRise" value="1" min="0" step="0.01" style="width:64px;">
+          <span class="mono" style="color:var(--ink-dim); font-size:.85rem;">:</span>
+          <input type="number" id="pSlopeRun" value="12" min="0.01" step="0.01" style="width:64px;">
+        </div>
       </div>
       <div class="field"><label>Purlin spacing (ft)</label><input type="number" id="pPurlin" value="5" min="2" max="10"></div>
       <div class="btn-row"><button class="btn" id="btnGenerate">Generate</button></div>
@@ -284,9 +332,10 @@ footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72
   <section class="panel" id="tab3d">
     <div class="card">
       <h2>3D structural model</h2>
-      <p class="hint">Drag = rotate · scroll / pinch = zoom · right-drag = pan. Or turn on hand control below and use your webcam. Side walls, gable-end walls and roof sheeting follow the "Sheeting view" toggle above.</p>
+      <p class="hint">Drag = rotate · scroll / pinch = zoom · right-drag = pan. Or turn on hand control below and use your webcam. Side walls, gable-end walls and roof sheeting follow the "Sheeting view" toggle above. Click a part label for a spec bubble.</p>
       <div id="canvas3dWrap">
         <canvas id="canvas3d"></canvas>
+        <div id="labelLayer"></div>
         <div class="overlay-panel">
           <div><b>Sharoz</b> — SJ Engineering shed</div>
           <div id="dimReadout" class="mono">50 × 270 ft</div>
@@ -298,10 +347,16 @@ footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72
         <video id="camFeed" autoplay playsinline muted></video>
         <canvas id="camOverlay"></canvas>
       </div>
-      <div class="btn-row no-print" style="margin-top:14px;">
-        <button class="btn secondary" id="btnHand">Enable hand control (camera)</button>
-        <button class="btn secondary" id="btnResetView">Reset view</button>
-        <button class="btn secondary" id="btnWire">Toggle wireframe</button>
+      <div class="btn-row no-print" style="margin-top:14px; justify-content:space-between;">
+        <div class="btn-row">
+          <button class="btn secondary" id="btnHand">Enable hand control (camera)</button>
+          <button class="btn secondary" id="btnResetView">Reset view</button>
+          <button class="btn secondary" id="btnWire">Toggle wireframe</button>
+        </div>
+        <div class="label-toggle-row">
+          <label class="chk"><input type="checkbox" id="chkLabels" checked> Part labels</label>
+          <label class="chk"><input type="checkbox" id="chkLabelsAll"> Show all (incl. purlins/girts)</label>
+        </div>
       </div>
       <p class="hint" style="margin-top:10px;">Hand gestures: <b>pinch</b> (thumb + index closer/farther) zooms in/out. Move your open hand <b>left/right</b> to orbit, <b>up/down</b> to tilt. Requires camera permission in your browser; if it can't start, mouse/touch controls still work.</p>
     </div>
@@ -331,7 +386,7 @@ footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72
   <section class="panel" id="tababout">
     <div class="card">
       <h2>SJ Engineering — Mechanical &amp; Construction Solutions</h2>
-      <p class="hint" style="font-size:.85rem; line-height:1.7;">This viewer was built around SJ Engineering's structural steel shed shown in the reference photo: a gantry-crane portal at one end feeding into a mono-slope bay shed. SJ Engineering's services span structural steel fabrication &amp; erection, industrial piping, sandblasting &amp; protective coating, HVAC ducting &amp; insulation, mechanical engineering / plant maintenance, fire fighting &amp; safety systems, boiler installation, solar EPC, and industrial construction.</p>
+      <p class="hint" style="font-size:.85rem; line-height:1.7;">This viewer was built around SJ Engineering's structural steel shed shown in the reference photo: a gantry-crane portal at one end feeding into a bay shed, with a choice of mono-slope or dual-slope (gable) roof. SJ Engineering's services span structural steel fabrication &amp; erection, industrial piping, sandblasting &amp; protective coating, HVAC ducting &amp; insulation, mechanical engineering / plant maintenance, fire fighting &amp; safety systems, boiler installation, solar EPC, and industrial construction.</p>
       <table style="margin-top:6px;">
         <tr><td style="color:var(--ink-dim); width:140px;">Workshop</td><td>Plot # LS-05, ST # 1/3, Sector 21, Korangi Industrial Area, Karachi-74900, Pakistan</td></tr>
         <tr><td style="color:var(--ink-dim);">Phone</td><td>+92 300 9239 576 · +92 300 9239 476</td></tr>
@@ -385,6 +440,25 @@ document.querySelectorAll('#sheetToggle button').forEach(b=>{
   });
 });
 
+/* ====================== CUSTOM SLOPE TOGGLE ====================== */
+const slopeSelect = document.getElementById('pSlope');
+const customSlopeField = document.getElementById('customSlopeField');
+function updateCustomSlopeVisibility(){
+  customSlopeField.style.display = slopeSelect.value === 'custom' ? 'flex' : 'none';
+}
+slopeSelect.addEventListener('change', updateCustomSlopeVisibility);
+updateCustomSlopeVisibility();
+function getSlopeValue(){
+  if(slopeSelect.value === 'custom'){
+    const rise = parseFloat(document.getElementById('pSlopeRise').value);
+    const run = parseFloat(document.getElementById('pSlopeRun').value);
+    if(!run || run<=0 || isNaN(rise)) return 0;
+    return Math.max(0, rise/run);
+  }
+  const v = parseFloat(slopeSelect.value);
+  return isNaN(v) ? 0 : v;
+}
+
 /* ====================== TAB SWITCHING ====================== */
 document.querySelectorAll('nav.tabs button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -405,42 +479,73 @@ function computeModel(){
   const bay     = parseFloat(document.getElementById('pBay').value)||15;
   const eave    = parseFloat(document.getElementById('pEave').value)||16;
   const gantryH = parseFloat(document.getElementById('pGantry').value)||22;
-  const slopeRaw = parseFloat(document.getElementById('pSlope').value);
-  const slope   = isNaN(slopeRaw) ? 0 : slopeRaw; // 0 is a valid value (flat roof)
+  const roofType = document.getElementById('pRoofType').value || 'mono'; // 'mono' | 'dual'
+  const slope   = getSlopeValue(); // 0 is a valid value (flat roof)
   const purlinS = parseFloat(document.getElementById('pPurlin').value)||5;
 
   const bays = Math.max(1, Math.ceil(length/bay));
   const frames = bays+1;
   const actualBay = length/bays;
-  const rise = width*slope;
-  const rafterLen = Math.sqrt(width*width + rise*rise);
-  const ridgeHeight = eave + rise;
-
-  const purlinLines = Math.max(2, Math.floor(rafterLen/purlinS)+1);
   const purlinSectionLen = 20; // ft, standard stock length
   const purlinPiecesPerLine = Math.ceil(length/purlinSectionLen);
-  const purlinTotalLen = purlinLines*length;
-  const purlinPieces = purlinLines*purlinPiecesPerLine;
 
-  const columns = frames*2;
-  const columnTotalLen = columns*eave; // approx, gantry end columns taller (handled below)
-  const rafters = frames;
-  const rafterTotalLen = rafters*rafterLen;
+  let rise, ridgeHeight, rafterLen, rafters, rafterTotalLen, purlinLines, purlinPieces, purlinTotalLen,
+      roofSheetArea, sideWallArea, endWallArea, frameHeights;
 
-  // per-frame wall heights (low side / high side), raised at the gantry bay (first two frames)
-  const frameHeights = [];
-  for(let i=0;i<frames;i++){
-    const isGantryFrame = (i===0 || i===1);
-    frameHeights.push({
-      low: isGantryFrame ? gantryH : eave,
-      high: isGantryFrame ? gantryH : (eave+rise)
-    });
+  if(roofType==='dual'){
+    // Symmetric gable: ridge sits on the centerline, both sides fall the same amount.
+    const halfWidth = width/2;
+    rise = halfWidth*slope;
+    ridgeHeight = eave+rise;
+    const rafterLenHalf = Math.sqrt(halfWidth*halfWidth + rise*rise);
+    rafterLen = rafterLenHalf; // per-slope rafter length (there are 2 per frame)
+    rafters = frames*2;
+    rafterTotalLen = rafters*rafterLenHalf;
+
+    purlinLines = Math.max(2, Math.floor(rafterLenHalf/purlinS)+1);
+    purlinPieces = purlinLines*2*purlinPiecesPerLine; // both roof planes
+    purlinTotalLen = purlinLines*2*length;
+
+    roofSheetArea = 2*length*rafterLenHalf; // both slopes
+    sideWallArea = 2*length*eave; // both long side walls flat, at eave height
+    endWallArea = 2*(width*eave + 0.5*width*rise); // rectangle + gable triangle, both ends
+
+    frameHeights = [];
+    for(let i=0;i<frames;i++){
+      const isGantryFrame = (i===0 || i===1);
+      const h = isGantryFrame ? gantryH : eave;
+      frameHeights.push({low:h, high:h}); // both eaves level; ridge is roof-only
+    }
+  } else {
+    // Mono-slope: single fall across the full width.
+    rise = width*slope;
+    ridgeHeight = eave+rise;
+    rafterLen = Math.sqrt(width*width + rise*rise);
+    rafters = frames;
+    rafterTotalLen = rafters*rafterLen;
+
+    purlinLines = Math.max(2, Math.floor(rafterLen/purlinS)+1);
+    purlinPieces = purlinLines*purlinPiecesPerLine;
+    purlinTotalLen = purlinLines*length;
+
+    roofSheetArea = length*rafterLen;
+    sideWallArea = length*eave + length*(eave+rise);
+    endWallArea = 2*(width*((eave+ridgeHeight)/2));
+
+    frameHeights = [];
+    for(let i=0;i<frames;i++){
+      const isGantryFrame = (i===0 || i===1);
+      frameHeights.push({
+        low: isGantryFrame ? gantryH : eave,
+        high: isGantryFrame ? gantryH : (eave+rise)
+      });
+    }
   }
 
   // bracing: X-bracing in end 2 bays on both side walls + roof plane, 2 diagonals per braced bay per plane
   const bracedBays = Math.min(2, bays);
   const wallBracing = bracedBays*2*2; // 2 side walls, both ends
-  const roofBracing = bracedBays*2*1;
+  const roofBracing = bracedBays*2*(roofType==='dual'?2:1);
   const braceMembers = wallBracing+roofBracing;
   const braceLen = Math.sqrt(actualBay*actualBay + eave*eave);
 
@@ -454,22 +559,19 @@ function computeModel(){
   const girtTotalLen = girtLines*length;
   const girtPieces = girtLines*Math.ceil(length/purlinSectionLen);
 
-  const roofSheetArea = length*rafterLen;
-  // both long walls (low side flat at eave, high side flat at eave+rise) + 2 gable-end trapezoids
-  const sideWallArea = length*eave + length*(eave+rise);
-  const endWallArea = 2*(width*((eave+ridgeHeight)/2));
-  const wallSheetArea = sideWallArea + endWallArea;
+  const columns = frames*2;
+  const columnTotalLen = columns*eave; // approx, gantry end columns taller (handled below)
 
   const baseplates = columns;
   const foundations = columns;
 
-  model = {width,length,bay:actualBay,bays,frames,eave,gantryH,slope,rise,rafterLen,ridgeHeight,
+  model = {width,length,bay:actualBay,bays,frames,eave,gantryH,roofType,slope,rise,rafterLen,ridgeHeight,
     purlinS,purlinLines,purlinPieces,purlinTotalLen,
     columns,columnTotalLen,rafters,rafterTotalLen,frameHeights,
     bracedBays,braceMembers,braceLen,
     craneRailLen,craneBrackets,
     girtLines,girtTotalLen,girtPieces,
-    roofSheetArea,sideWallArea,endWallArea,wallSheetArea,baseplates,foundations};
+    roofSheetArea,sideWallArea,endWallArea,wallSheetArea:sideWallArea+endWallArea,baseplates,foundations};
   return model;
 }
 
@@ -477,43 +579,51 @@ function fmt(n,d){ d=d===undefined?1:d; return (Math.round(n*Math.pow(10,d))/Mat
 
 /* ====================== BOM RENDER ====================== */
 function renderBOM(m){
+  const dual = m.roofType==='dual';
   const stat = document.getElementById('statGrid');
   stat.innerHTML = `
     <div class="stat"><div class="num">${m.frames}</div><div class="lbl">Portal frames (@ ${fmt(m.bay)} ft c/c)</div></div>
     <div class="stat"><div class="num">${m.columns}</div><div class="lbl">Columns, ${fmt(m.eave)} ft tall</div></div>
-    <div class="stat"><div class="num">${m.rafters}</div><div class="lbl">Rafters, ${fmt(m.rafterLen)} ft each</div></div>
-    <div class="stat"><div class="num">${m.purlinPieces}</div><div class="lbl">Roof purlins (${m.purlinLines} lines)</div></div>
+    <div class="stat"><div class="num">${m.rafters}</div><div class="lbl">Rafters, ${fmt(m.rafterLen)} ft each${dual?' (2 per frame)':''}</div></div>
+    <div class="stat"><div class="num">${m.purlinPieces}</div><div class="lbl">Roof purlins (${m.purlinLines}${dual?' x 2 sides':''} lines)</div></div>
     <div class="stat"><div class="num">${fmt(m.roofSheetArea)}</div><div class="lbl">Roof sheeting, sq ft</div></div>
     <div class="stat"><div class="num">${fmt(m.wallSheetArea)}</div><div class="lbl">Wall sheeting (side + end), sq ft</div></div>
   `;
   const rows = [
     ['Portal frame columns', `${fmt(m.eave)} ft standard / ${fmt(m.gantryH)} ft gantry end`, m.columns, `${fmt(m.eave)} ft`, `${fmt(m.columnTotalLen)} ft`, 'H-section, base-plated'],
-    [m.slope>0 ? 'Rafters (mono-slope)' : 'Rafters (flat / level)', m.slope>0 ? `slope ${fmt(m.slope*100)}%` : 'level', m.rafters, `${fmt(m.rafterLen)} ft`, `${fmt(m.rafterTotalLen)} ft`, m.slope>0 ? `Rise ${fmt(m.rise)} ft over ${fmt(m.width)} ft` : `Level span ${fmt(m.width)} ft`],
-    ['Roof purlins', `spacing ${fmt(m.purlinS)} ft, ${m.purlinLines} lines`, m.purlinPieces, '20 ft stock', `${fmt(m.purlinTotalLen)} ft`, 'C / Z section'],
+    [dual ? 'Rafters (dual-slope, both sides)' : (m.slope>0 ? 'Rafters (mono-slope)' : 'Rafters (flat / level)'),
+      dual ? `slope ${fmt(m.slope*100)}% each side, ridge on centerline` : (m.slope>0 ? `slope ${fmt(m.slope*100)}%` : 'level'),
+      m.rafters, `${fmt(m.rafterLen)} ft`, `${fmt(m.rafterTotalLen)} ft`,
+      dual ? `Rise ${fmt(m.rise)} ft over ${fmt(m.width/2)} ft half-span` : (m.slope>0 ? `Rise ${fmt(m.rise)} ft over ${fmt(m.width)} ft` : `Level span ${fmt(m.width)} ft`)],
+    ['Roof purlins', `spacing ${fmt(m.purlinS)} ft, ${m.purlinLines}${dual?' x 2':''} lines`, m.purlinPieces, '20 ft stock', `${fmt(m.purlinTotalLen)} ft`, 'C / Z section'],
     ['Wall girts', `${m.girtLines} lines`, m.girtPieces, '20 ft stock', `${fmt(m.girtTotalLen)} ft`, 'Both long side walls'],
     ['Wind bracing (wall + roof)', 'X-bracing, end bays', m.braceMembers, `${fmt(m.braceLen)} ft`, `${fmt(m.braceMembers*m.braceLen)} ft`, `${m.bracedBays} end bay(s) each side`],
     ['Gantry crane runway rail', 'full length, 2 rails', 2, `${fmt(m.length)} ft`, `${fmt(m.craneRailLen)} ft`, 'One side of building'],
     ['Crane bracket / corbel', 'at each frame', m.craneBrackets, '—', '—', 'Supports runway beam'],
     ['Column base plates', 'per column', m.baseplates, '—', '—', 'Anchor bolted'],
     ['RCC foundations (isolated)', 'per column', m.foundations, '—', '—', 'Size per soil report'],
-    ['Roof sheeting (profile)', `${fmt(m.rafterLen)} ft slope run`, 1, `${fmt(m.roofSheetArea)} sq ft`, `${fmt(m.roofSheetArea)} sq ft`, 'GI / pre-painted sheet'],
-    ['Side wall cladding', `${fmt(m.eave)} ft / ${fmt(m.eave+m.rise)} ft`, 2, `${fmt(m.length)} ft run`, `${fmt(m.sideWallArea)} sq ft`, 'Both long walls, low + high side'],
-    ['End (gable) wall cladding', `${fmt(m.width)} ft base`, 2, `avg ${fmt((m.eave+m.ridgeHeight)/2)} ft`, `${fmt(m.endWallArea)} sq ft`, 'Front &amp; rear gable ends'],
+    ['Roof sheeting (profile)', dual ? `${fmt(m.rafterLen)} ft slope run x 2 sides` : `${fmt(m.rafterLen)} ft slope run`, 1, `${fmt(m.roofSheetArea)} sq ft`, `${fmt(m.roofSheetArea)} sq ft`, 'GI / pre-painted sheet'],
+    ['Side wall cladding', dual ? `${fmt(m.eave)} ft (level, both walls)` : `${fmt(m.eave)} ft / ${fmt(m.eave+m.rise)} ft`, 2, `${fmt(m.length)} ft run`, `${fmt(m.sideWallArea)} sq ft`, dual ? 'Both long walls, level eave' : 'Both long walls, low + high side'],
+    ['End (gable) wall cladding', `${fmt(m.width)} ft base`, 2, dual ? `eave ${fmt(m.eave)} ft + ${fmt(m.rise)} ft rise` : `avg ${fmt((m.eave+m.ridgeHeight)/2)} ft`, `${fmt(m.endWallArea)} sq ft`, 'Front &amp; rear gable ends'],
   ];
   document.querySelector('#bomTable tbody').innerHTML = rows.map(r=>
     `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`
   ).join('');
 
   document.getElementById('assumptionsList').innerHTML = `
-    <li>${m.slope>0 ? 'Mono-slope roof' : 'Flat (level) roof'}, single portal frame repeated at ${fmt(m.bay)} ft centers over ${m.bays} bays (${m.frames} frames total).</li>
-    <li>${m.slope>0 ? `Eave height ${fmt(m.eave)} ft; high side ${fmt(m.ridgeHeight)} ft at slope ${fmt(m.slope*100)}%.` : `Level eave height ${fmt(m.eave)} ft on both sides — no fall across the ${fmt(m.width)} ft span. Confirm roof drainage: a flat roof needs either internal drains/gutters or a minimum fall added.`}</li>
+    <li>${dual ? 'Dual-slope (gable) roof' : (m.slope>0 ? 'Mono-slope roof' : 'Flat (level) roof')}, single portal frame repeated at ${fmt(m.bay)} ft centers over ${m.bays} bays (${m.frames} frames total).</li>
+    <li>${dual
+        ? `Eave height ${fmt(m.eave)} ft on both long walls; ridge runs along the centerline at ${fmt(m.ridgeHeight)} ft, symmetric slope ${fmt(m.slope*100)}% each side.`
+        : (m.slope>0
+            ? `Eave height ${fmt(m.eave)} ft; high side ${fmt(m.ridgeHeight)} ft at slope ${fmt(m.slope*100)}%.`
+            : `Level eave height ${fmt(m.eave)} ft on both sides — no fall across the ${fmt(m.width)} ft span. Confirm roof drainage: a flat roof needs either internal drains/gutters or a minimum fall added.`)}</li>
     <li>One gantry-crane portal bay at the building end, columns raised to ${fmt(m.gantryH)} ft to match the reference photo.</li>
     <li>Both long side walls and both gable end walls are modeled as sheeted panels; toggle "Sheeting view" to inspect structure only, a see-through auto view, or fully sheeted.</li>
     <li>Purlins and girts assumed on 20 ft stock lengths with standard splice overlap ignored (add ~5% for laps/waste).</li>
     <li>Wind bracing (X-type) placed in the end two bays only; a full wind-load check should confirm this is adequate.</li>
     <li>Member sizes, foundation depth, bolt grades and steel grade are not specified here — confirm with a licensed structural engineer before fabrication or ordering.</li>
   `;
-  document.getElementById('dimReadout').textContent = `${fmt(m.width)} × ${fmt(m.length)} ft · eave ${fmt(m.eave)} ft`;
+  document.getElementById('dimReadout').textContent = `${fmt(m.width)} × ${fmt(m.length)} ft · eave ${fmt(m.eave)} ft${dual?' · gable':''}`;
 }
 
 /* ====================== 2D DRAWING ====================== */
@@ -604,6 +714,16 @@ function drawPlan(m){
     ctx.strokeRect(ox+6,oy+6,w-12,h-12);
   }
 
+  // ridge line down the centerline for a dual-slope (gable) roof
+  if(m.roofType==='dual' && sheetMode!=='structure'){
+    ctx.strokeStyle = '#f5c542'; ctx.lineWidth = 1;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(ox,oy+h/2); ctx.lineTo(ox+w,oy+h/2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f5c542'; ctx.font='10px "JetBrains Mono",monospace'; ctx.textAlign='left';
+    ctx.fillText('RIDGE', ox+6, oy+h/2-6);
+  }
+
   // column grid lines
   ctx.strokeStyle = 'rgba(77,126,168,0.9)'; ctx.lineWidth=1;
   for(let i=0;i<=m.frames-1;i++){
@@ -627,38 +747,44 @@ function drawPlan(m){
   ctx.fillStyle='#f5c542'; ctx.textAlign='center'; ctx.fillText(`${fmt(m.width)} ft`, 0, -8); ctx.restore();
 
   ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
-  ctx.fillText(`PLAN VIEW — ${m.frames} frames @ ${fmt(m.bay)} ft c/c — ${m.bays} bays — side walls shown as perimeter cladding`, ox, oy+h+34);
+  ctx.fillText(`PLAN VIEW — ${m.frames} frames @ ${fmt(m.bay)} ft c/c — ${m.bays} bays — ${m.roofType==='dual'?'dual-slope roof, ridge on centerline':'side walls shown as perimeter cladding'}`, ox, oy+h+34);
 }
 
 function drawElevation(m){
   const pad=70;
   const availW = cv.width-2*pad, availH = cv.height-2*pad-40;
   const scale = Math.min(availW/m.length, availH/m.ridgeHeight);
-  const w = m.length*scale, hEave = m.eave*scale, hRidge = m.ridgeHeight*scale;
+  const w = m.length*scale, hEave = m.eave*scale;
   const ox = (cv.width-w)/2, baseY = cv.height-90;
 
-  // side wall cladding fill (this is the low-eave side wall, seen face-on)
-  fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+  // Side elevation looks along the length at the long wall face. The wall itself is flat at eave
+  // height along its run (the roof slope runs across the width, not along the length) except at
+  // the raised gantry bay.
+  const points = [];
+  for(let i=0;i<m.frames;i++){
+    const x = ox+i*m.bay*scale;
+    const isGantry = (i===0||i===1);
+    const h = (isGantry ? m.gantryH : m.eave)*scale;
+    points.push([x, baseY-h]);
+  }
+
+  fillCladding([[ox,baseY], ...points, [ox+w,baseY]], false);
 
   ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
   ctx.beginPath();
-  ctx.moveTo(ox, baseY);
-  ctx.lineTo(ox, baseY-hEave);
-  ctx.lineTo(ox+w, baseY-hRidge);
-  ctx.lineTo(ox+w, baseY);
+  ctx.moveTo(ox,baseY);
+  points.forEach(p=>ctx.lineTo(p[0],p[1]));
+  ctx.lineTo(ox+w,baseY);
   ctx.stroke();
-  // low-eave slope line back
-  ctx.beginPath(); ctx.moveTo(ox,baseY-hEave); ctx.lineTo(ox+w,baseY-hRidge); ctx.stroke();
+  ctx.beginPath();
+  points.forEach((p,i)=> i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]));
+  ctx.strokeStyle='rgba(238,242,245,0.85)'; ctx.stroke();
 
   // columns
   ctx.strokeStyle='rgba(77,126,168,0.9)';
-  for(let i=0;i<m.frames;i++){
-    const x = ox+i*m.bay*scale;
-    const frac = i*m.bay/m.length;
-    const colTop = baseY - (hEave + (hRidge-hEave)*frac);
-    ctx.beginPath(); ctx.moveTo(x,baseY); ctx.lineTo(x,colTop); ctx.stroke();
-  }
-  // gantry columns taller, first bay
+  points.forEach(p=>{ ctx.beginPath(); ctx.moveTo(p[0],baseY); ctx.lineTo(p[0],p[1]); ctx.stroke(); });
+
+  // gantry columns / bay highlight
   ctx.strokeStyle='#ff8a5c'; ctx.lineWidth=2;
   const gH = m.gantryH*scale;
   ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-gH); ctx.stroke();
@@ -673,9 +799,7 @@ function drawElevation(m){
   dimLine(ox, baseY+30, ox+w, baseY+30, `${fmt(m.length)} ft`, -8);
   dimLine(ox-40, baseY, ox-40, baseY-hEave, `${fmt(m.eave)} ft`, -8);
   ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
-  ctx.fillText(m.slope>0
-    ? `SIDE ELEVATION — eave ${fmt(m.eave)} ft, high side ${fmt(m.ridgeHeight)} ft — side wall cladding shown`
-    : `SIDE ELEVATION — level eave ${fmt(m.eave)} ft both sides — side wall cladding shown`, ox, baseY+55);
+  ctx.fillText(`SIDE ELEVATION — level eave ${fmt(m.eave)} ft along run (gantry bay raised to ${fmt(m.gantryH)} ft) — ${m.roofType==='dual'?'dual-slope':'mono-slope'} roof runs across the width, see Section/End views`, ox, baseY+55);
 }
 
 function drawSection(m){
@@ -685,33 +809,67 @@ function drawSection(m){
   const w=m.width*scale, hEave=m.eave*scale, hRidge=m.ridgeHeight*scale;
   const ox=(cv.width-w)/2, baseY=cv.height-90;
 
-  // end-wall style fill to indicate cladding on both sides of the frame in section
-  fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+  if(m.roofType==='dual'){
+    const midX = ox+w/2;
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[midX,baseY-hRidge],[midX,baseY]], false);
+    fillCladding([[midX,baseY],[midX,baseY-hRidge],[ox+w,baseY-hEave],[ox+w,baseY]], false);
 
-  ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
-  ctx.lineTo(ox+w,baseY-hRidge); ctx.lineTo(ox+w,baseY);
-  ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(ox,baseY-hEave); ctx.lineTo(ox+w,baseY-hRidge); ctx.stroke();
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(midX,baseY-hRidge);
+    ctx.lineTo(ox+w,baseY-hEave);
+    ctx.lineTo(ox+w,baseY);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,baseY-hEave); ctx.lineTo(midX,baseY-hRidge); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(midX,baseY-hRidge); ctx.lineTo(ox+w,baseY-hEave); ctx.stroke();
 
-  // purlins as ticks along rafter
-  const nP = m.purlinLines;
-  ctx.strokeStyle='#4d7ea8';
-  for(let i=0;i<nP;i++){
-    const t=i/(nP-1);
-    const x=ox+t*w, y=baseY-hEave-(hRidge-hEave)*t;
-    ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.stroke();
+    // ridge marker
+    ctx.fillStyle='#f5c542'; ctx.beginPath(); ctx.arc(midX,baseY-hRidge,3,0,Math.PI*2); ctx.fill();
+    ctx.font='10px "JetBrains Mono",monospace'; ctx.textAlign='center';
+    ctx.fillText('RIDGE', midX, baseY-hRidge-8);
+
+    // purlins on both slopes
+    const nP = m.purlinLines;
+    ctx.strokeStyle='#4d7ea8';
+    for(let side=0; side<2; side++){
+      for(let i=0;i<nP;i++){
+        const t=i/(nP-1);
+        const x = side===0 ? ox+t*(midX-ox) : midX+t*(ox+w-midX);
+        const y = side===0 ? baseY-hEave-(hRidge-hEave)*t : baseY-hRidge+(hRidge-hEave)*t;
+        ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.stroke();
+      }
+    }
+    dimLine(ox+w+40,baseY,ox+w+40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
+  } else {
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(ox+w,baseY-hRidge); ctx.lineTo(ox+w,baseY);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox,baseY-hEave); ctx.lineTo(ox+w,baseY-hRidge); ctx.stroke();
+
+    // purlins as ticks along rafter
+    const nP = m.purlinLines;
+    ctx.strokeStyle='#4d7ea8';
+    for(let i=0;i<nP;i++){
+      const t=i/(nP-1);
+      const x=ox+t*w, y=baseY-hEave-(hRidge-hEave)*t;
+      ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.stroke();
+    }
+    dimLine(ox+w+40,baseY,ox+w+40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
   }
+
   // ground
   ctx.strokeStyle='#4d7ea8'; ctx.beginPath(); ctx.moveTo(ox-20,baseY); ctx.lineTo(ox+w+20,baseY); ctx.stroke();
 
   dimLine(ox,baseY+30,ox+w,baseY+30,`${fmt(m.width)} ft`,-8);
   dimLine(ox-40,baseY,ox-40,baseY-hEave,`${fmt(m.eave)} ft`,-8);
-  dimLine(ox+w+40,baseY,ox+w+40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
 
   ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
-  ctx.fillText(`CROSS-SECTION — ${m.slope>0?'mono-slope':'flat / level'} frame, ${nP} purlin lines @ ${fmt(m.purlinS)} ft`, ox, baseY+55);
+  ctx.fillText(`CROSS-SECTION — ${m.roofType==='dual' ? 'dual-slope (gable), 2 side slopes' : (m.slope>0?'mono-slope':'flat / level')} frame, ${m.purlinLines}${m.roofType==='dual'?' x 2':''} purlin lines @ ${fmt(m.purlinS)} ft`, ox, baseY+55);
 }
 
 function drawEnd(m){
@@ -721,23 +879,44 @@ function drawEnd(m){
   const w=m.width*scale, hEave=m.eave*scale, hRidge=m.ridgeHeight*scale;
   const ox=(cv.width-w)/2, baseY=cv.height-90;
 
-  // gable end wall cladding fill
-  fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+  if(m.roofType==='dual'){
+    const midX = ox+w/2;
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[midX,baseY-hRidge],[midX,baseY]], false);
+    fillCladding([[midX,baseY],[midX,baseY-hRidge],[ox+w,baseY-hEave],[ox+w,baseY]], false);
 
-  ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
-  ctx.lineTo(ox+w,baseY-hRidge); ctx.lineTo(ox+w,baseY);
-  ctx.closePath(); ctx.stroke();
-  // bracing X
-  ctx.strokeStyle='rgba(255,138,92,0.85)';
-  ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(ox+w,baseY-hEave*0.8); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(ox+w,baseY); ctx.lineTo(ox,baseY-hEave*0.8); ctx.stroke();
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(midX,baseY-hRidge);
+    ctx.lineTo(ox+w,baseY-hEave);
+    ctx.lineTo(ox+w,baseY);
+    ctx.closePath(); ctx.stroke();
+
+    // bracing X on each half
+    ctx.strokeStyle='rgba(255,138,92,0.85)';
+    ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(midX,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(midX,baseY); ctx.lineTo(ox,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(midX,baseY); ctx.lineTo(ox+w,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox+w,baseY); ctx.lineTo(midX,baseY-hEave*0.8); ctx.stroke();
+  } else {
+    fillCladding([[ox,baseY],[ox,baseY-hEave],[ox+w,baseY-hRidge],[ox+w,baseY]], false);
+
+    ctx.strokeStyle='#eef2f5'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ox,baseY); ctx.lineTo(ox,baseY-hEave);
+    ctx.lineTo(ox+w,baseY-hRidge); ctx.lineTo(ox+w,baseY);
+    ctx.closePath(); ctx.stroke();
+    // bracing X
+    ctx.strokeStyle='rgba(255,138,92,0.85)';
+    ctx.beginPath(); ctx.moveTo(ox,baseY); ctx.lineTo(ox+w,baseY-hEave*0.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox+w,baseY); ctx.lineTo(ox,baseY-hEave*0.8); ctx.stroke();
+  }
+
   ctx.strokeStyle='#4d7ea8'; ctx.beginPath(); ctx.moveTo(ox-20,baseY); ctx.lineTo(ox+w+20,baseY); ctx.stroke();
   dimLine(ox,baseY+30,ox+w,baseY+30,`${fmt(m.width)} ft`,-8);
   dimLine(ox-40,baseY,ox-40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
   ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
-  ctx.fillText('END ELEVATION — gable end with wind bracing + end-wall cladding', ox, baseY+55);
+  ctx.fillText(`END ELEVATION — gable end with wind bracing + end-wall cladding${m.roofType==='dual'?' (ridge centered)':''}`, ox, baseY+55);
 }
 
 document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
@@ -753,6 +932,91 @@ let scene, camera, renderer, group, wireOn=false;
 let sheetMeshes = [];
 let corrugatedTex = null;
 let orbit = { az: 0.6, pol: 1.15, dist: 0, target:new THREE.Vector3() };
+
+/* ---- part label registry ----
+   Each entry: {key, pos:THREE.Vector3, cat, title, detail, major:bool}
+   major=true labels (frames, gantry, crane, bracing groups) always show when labels are on.
+   major=false (purlins/girts individual lines) only show when "show all" is checked. */
+let partLabels = [];
+let labelDOMs = {};
+let pinnedLabel = null;
+let labelsEnabled = true;
+let labelsShowAll = false;
+
+function resetLabelRegistry(){
+  partLabels = [];
+  const layer = document.getElementById('labelLayer');
+  layer.innerHTML='';
+  labelDOMs = {};
+  pinnedLabel = null;
+}
+
+function addLabel(key,pos,cat,title,detail,major){
+  partLabels.push({key,pos:pos.clone(),cat,title,detail,major:major!==false});
+}
+
+function buildLabelDOM(){
+  const layer = document.getElementById('labelLayer');
+  partLabels.forEach(l=>{
+    const el = document.createElement('div');
+    el.className = 'part-label cat-'+l.cat;
+    el.innerHTML = `<div class="label-detail"><b>${l.title}</b>${l.detail}</div><div class="tag">${l.title}</div><div class="stem"></div>`;
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(pinnedLabel === l.key){
+        el.classList.remove('pinned'); pinnedLabel=null;
+      } else {
+        if(pinnedLabel && labelDOMs[pinnedLabel]) labelDOMs[pinnedLabel].classList.remove('pinned');
+        el.classList.add('pinned'); pinnedLabel = l.key;
+      }
+    });
+    layer.appendChild(el);
+    labelDOMs[l.key] = el;
+  });
+  updateLabelVisibilityMode();
+}
+
+function updateLabelVisibilityMode(){
+  partLabels.forEach(l=>{
+    const el = labelDOMs[l.key];
+    if(!el) return;
+    const shouldExist = labelsEnabled && (l.major || labelsShowAll);
+    el.style.display = shouldExist ? 'flex' : 'none';
+  });
+}
+
+const _projVec = new THREE.Vector3();
+function updateLabelPositions(){
+  if(!camera || !renderer) return;
+  const wrap = document.getElementById('canvas3dWrap');
+  const W = wrap.clientWidth, H = 560;
+  partLabels.forEach(l=>{
+    const el = labelDOMs[l.key];
+    if(!el || el.style.display==='none') return;
+    _projVec.copy(l.pos).project(camera);
+    const behind = _projVec.z > 1;
+    if(behind){ el.style.opacity='0'; el.style.pointerEvents='none'; return; }
+    const x = (_projVec.x*0.5+0.5)*W;
+    const y = (1-(_projVec.y*0.5+0.5))*H;
+    if(x<-40||x>W+40||y<-40||y>H+40){ el.style.opacity='0'; el.style.pointerEvents='none'; return; }
+    el.style.left = x+'px';
+    el.style.top = y+'px';
+    el.style.opacity='1';
+    el.style.pointerEvents='auto';
+  });
+}
+
+document.getElementById('chkLabels').addEventListener('change', (e)=>{
+  labelsEnabled = e.target.checked;
+  updateLabelVisibilityMode();
+});
+document.getElementById('chkLabelsAll').addEventListener('change', (e)=>{
+  labelsShowAll = e.target.checked;
+  updateLabelVisibilityMode();
+});
+document.getElementById('canvas3dWrap').addEventListener('click', ()=>{
+  if(pinnedLabel && labelDOMs[pinnedLabel]){ labelDOMs[pinnedLabel].classList.remove('pinned'); pinnedLabel=null; }
+});
 
 function initThree(){
   const wrap = document.getElementById('canvas3dWrap');
@@ -847,18 +1111,50 @@ function buildEnvelope(m,S,halfL,halfW){
       );
     }
   }
-  // gable end walls (front + rear), following the roof-slope profile
+  // side wall cladding labels (once per side, mid-length)
+  addLabel('sidewall-low', new THREE.Vector3(-halfW, m.eave*S*0.5, 0), 'sheet', 'Side Wall Cladding (low)',
+    `Run: ${fmt(m.length)} ft<br>Height: ${fmt(m.eave)} ft<br>GI / pre-painted sheet`, true);
+  addLabel('sidewall-high', new THREE.Vector3(halfW, m.eave*S*0.5, 0), 'sheet', 'Side Wall Cladding (high)',
+    `Run: ${fmt(m.length)} ft<br>Height: ${fmt(m.eave)} ft<br>GI / pre-painted sheet`, true);
+
+  // gable end walls (front + rear)
   const endMat = sheetMaterial(Math.max(3,Math.round(m.width/10)), 3);
-  [0, m.frames-1].forEach(idx=>{
+  [0, m.frames-1].forEach((idx,ei)=>{
     const z = -halfL + idx*m.bay*S;
-    const hLow = m.frameHeights[idx].low, hHigh = m.frameHeights[idx].high;
-    makeWallQuad(
-      new THREE.Vector3(-halfW,0,z),
-      new THREE.Vector3(halfW,0,z),
-      new THREE.Vector3(halfW,hHigh,z),
-      new THREE.Vector3(-halfW,hLow,z),
-      endMat
-    );
+    if(m.roofType==='dual'){
+      // triangular gable on top of a rectangular wall, ridge centered at x=0
+      const eaveH = m.frameHeights[idx].low;
+      const ridgeH = (idx===0||idx===1) ? eaveH : m.ridgeHeight*S; // gantry bay stays flat-topped
+      // rectangle part
+      makeWallQuad(
+        new THREE.Vector3(-halfW,0,z),
+        new THREE.Vector3(halfW,0,z),
+        new THREE.Vector3(halfW,eaveH,z),
+        new THREE.Vector3(-halfW,eaveH,z),
+        endMat
+      );
+      // triangular gable (as a thin quad collapsing one edge to the ridge point)
+      if(ridgeH>eaveH){
+        makeWallQuad(
+          new THREE.Vector3(-halfW,eaveH,z),
+          new THREE.Vector3(halfW,eaveH,z),
+          new THREE.Vector3(0,ridgeH,z),
+          new THREE.Vector3(0,ridgeH,z),
+          endMat
+        );
+      }
+    } else {
+      const hLow = m.frameHeights[idx].low, hHigh = m.frameHeights[idx].high;
+      makeWallQuad(
+        new THREE.Vector3(-halfW,0,z),
+        new THREE.Vector3(halfW,0,z),
+        new THREE.Vector3(halfW,hHigh,z),
+        new THREE.Vector3(-halfW,hLow,z),
+        endMat
+      );
+    }
+    addLabel('endwall-'+ei, new THREE.Vector3(0, m.eave*S*0.55, z), 'sheet', ei===0?'Front Gable Wall':'Rear Gable Wall',
+      `Base: ${fmt(m.width)} ft<br>Front &amp; rear end cladding`, true);
   });
 }
 
@@ -874,6 +1170,7 @@ function applySheetMode(){
 function buildThreeModel(m){
   while(group.children.length) group.remove(group.children[0]);
   sheetMeshes = [];
+  resetLabelRegistry();
 
   const S = 1; // 1 unit = 1 ft
   const steelMat = new THREE.MeshStandardMaterial({color:0x9fb0bb, metalness:0.6, roughness:0.4});
@@ -881,6 +1178,7 @@ function buildThreeModel(m){
   const purlinMat = new THREE.MeshStandardMaterial({color:0x5a7891, metalness:0.5, roughness:0.5});
 
   const halfL = m.length*S/2, halfW = m.width*S/2;
+  const eaveY = m.eave*S, ridgeY = m.ridgeHeight*S;
 
   // ground grid
   const grid = new THREE.GridHelper(Math.max(m.length,m.width)*1.4, 40, 0x2a3340, 0x1a222c);
@@ -909,34 +1207,91 @@ function buildThreeModel(m){
   for(let i=0;i<m.frames;i++){
     const z = -halfL + i*m.bay*S;
     const isGantryFrame = (i===0 || i===1);
-    const h1 = isGantryFrame ? m.gantryH*S : m.eave*S;
-    const h2 = isGantryFrame ? m.gantryH*S : (m.eave*S + m.rise*S);
+    const h1 = isGantryFrame ? m.gantryH*S : eaveY;
+    const h2 = isGantryFrame ? m.gantryH*S : (m.roofType==='dual' ? eaveY : ridgeY);
     const mat = isGantryFrame ? gantryMat : steelMat;
     makeColumn(-halfW, z, h1, mat);
     makeColumn(halfW, z, h2, mat);
-    makeBeam(-halfW,h1,z, halfW,h2,z, mat, 0.5); // rafter
+    if(m.roofType==='dual' && !isGantryFrame){
+      // two rafters meeting at ridge
+      makeBeam(-halfW,h1,z, 0,ridgeY,z, mat, 0.5);
+      makeBeam(0,ridgeY,z, halfW,h2,z, mat, 0.5);
+    } else {
+      makeBeam(-halfW,h1,z, halfW,h2,z, mat, 0.5); // rafter (or flat gantry tie)
+    }
+
+    // frame / column labels — one per frame, positioned at the low-side column mid-height
+    const label = isGantryFrame ? `Gantry Column F${i+1}` : `Column F${i+1}`;
+    addLabel('frame-'+i, new THREE.Vector3(-halfW, h1*0.55, z), isGantryFrame?'gantry':'frame', label,
+      `Height: ${fmt(isGantryFrame?m.gantryH:m.eave)} ft<br>H-section, base-plated<br>Frame ${i+1} of ${m.frames} @ ${fmt(m.bay)} ft c/c`, true);
+  }
+
+  // ridge label (roof)
+  if(m.roofType==='dual'){
+    addLabel('ridge', new THREE.Vector3(0, ridgeY, 0), 'sheet', 'Ridge Line',
+      `Ridge height: ${fmt(m.ridgeHeight)} ft<br>Symmetric slope ${fmt(m.slope*100)}% each side`, true);
   }
 
   // purlins spanning length, at intervals across the slope
-  for(let i=0;i<m.purlinLines;i++){
-    const t = i/(m.purlinLines-1);
-    const x = -halfW + t*m.width*S;
-    const y = m.eave*S + t*m.rise*S;
-    makeBeam(x,y,-halfL, x,y,halfL, purlinMat, 0.22);
+  if(m.roofType==='dual'){
+    for(let side=0; side<2; side++){
+      const dir = side===0 ? -1 : 1;
+      for(let i=0;i<m.purlinLines;i++){
+        const t = i/(m.purlinLines-1);
+        const x = dir*t*halfW;
+        const y = eaveY + t*(ridgeY-eaveY);
+        makeBeam(x,y,-halfL, x,y,halfL, purlinMat, 0.22);
+        addLabel('purlin-'+side+'-'+i, new THREE.Vector3(x,y,halfL*0.5), 'purlin', `Purlin ${side===0?'L':'R'}${i+1}`,
+          `Spacing: ${fmt(m.purlinS)} ft<br>C / Z section, 20 ft stock`, false);
+      }
+    }
+  } else {
+    for(let i=0;i<m.purlinLines;i++){
+      const t = i/(m.purlinLines-1);
+      const x = -halfW + t*m.width*S;
+      const y = eaveY + t*m.rise*S;
+      makeBeam(x,y,-halfL, x,y,halfL, purlinMat, 0.22);
+      addLabel('purlin-'+i, new THREE.Vector3(x,y,halfL*0.5), 'purlin', `Purlin ${i+1}`,
+        `Spacing: ${fmt(m.purlinS)} ft<br>C / Z section, 20 ft stock`, false);
+    }
   }
 
-  // roof plane (sheeting, follows sheeting toggle like the walls)
-  const roofMat = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
-  const roofShape = new THREE.PlaneGeometry(m.width*S, m.length*S, 1,1);
-  const roofMesh = new THREE.Mesh(roofShape, roofMat);
-  roofMesh.rotation.x = -Math.PI/2;
-  const slopeAngle = Math.atan2(m.rise*S, m.width*S);
-  roofMesh.rotation.z = 0;
-  roofMesh.rotation.x = -Math.PI/2 + slopeAngle;
-  roofMesh.position.set(0, m.eave*S + (m.rise*S)/2, 0);
-  roofMesh.userData.isSheet = true;
-  group.add(roofMesh);
-  sheetMeshes.push(roofMesh);
+  // roof plane(s) — sheeting, built as quads so they always track the current slope/ridge exactly
+  if(m.roofType==='dual'){
+    const roofMatL = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
+    const roofMatR = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
+    // left slope: -halfW (eave) to 0 (ridge)
+    makeWallQuad(
+      new THREE.Vector3(-halfW,eaveY,-halfL),
+      new THREE.Vector3(-halfW,eaveY,halfL),
+      new THREE.Vector3(0,ridgeY,halfL),
+      new THREE.Vector3(0,ridgeY,-halfL),
+      roofMatL
+    );
+    // right slope: 0 (ridge) to +halfW (eave)
+    makeWallQuad(
+      new THREE.Vector3(0,ridgeY,-halfL),
+      new THREE.Vector3(0,ridgeY,halfL),
+      new THREE.Vector3(halfW,eaveY,halfL),
+      new THREE.Vector3(halfW,eaveY,-halfL),
+      roofMatR
+    );
+    addLabel('roofsheet-l', new THREE.Vector3(-halfW*0.5,(eaveY+ridgeY)*0.5,0), 'sheet', 'Roof Sheeting (L)',
+      `Area: ${fmt(m.roofSheetArea/2)} sq ft (this slope)<br>GI / pre-painted profile sheet`, true);
+    addLabel('roofsheet-r', new THREE.Vector3(halfW*0.5,(eaveY+ridgeY)*0.5,0), 'sheet', 'Roof Sheeting (R)',
+      `Area: ${fmt(m.roofSheetArea/2)} sq ft (this slope)<br>GI / pre-painted profile sheet`, true);
+  } else {
+    const roofMat = sheetMaterial(Math.max(4,Math.round(m.length/10)), Math.max(2,Math.round(m.rafterLen/8)));
+    makeWallQuad(
+      new THREE.Vector3(-halfW,eaveY,-halfL),
+      new THREE.Vector3(-halfW,eaveY,halfL),
+      new THREE.Vector3(halfW,ridgeY,halfL),
+      new THREE.Vector3(halfW,ridgeY,-halfL),
+      roofMat
+    );
+    addLabel('roofsheet', new THREE.Vector3(0,(eaveY+ridgeY)*0.5,0), 'sheet', 'Roof Sheeting',
+      `Area: ${fmt(m.roofSheetArea)} sq ft<br>Slope run: ${fmt(m.rafterLen)} ft<br>GI / pre-painted profile sheet`, true);
+  }
 
   // side walls + gable end walls
   buildEnvelope(m,S,halfL,halfW);
@@ -948,8 +1303,13 @@ function buildThreeModel(m){
   // crane trolley beam sample at gantry bay
   makeBeam(-halfW, craneY, -halfL+ m.bay*S*0.5, halfW, craneY, -halfL+m.bay*S*0.5, gantryMat, 0.35);
 
+  addLabel('crane-runway', new THREE.Vector3(-halfW, craneY, 0), 'gantry', 'Crane Runway Rail',
+    `Length: ${fmt(m.length)} ft x 2 rails<br>Total: ${fmt(m.craneRailLen)} ft<br>Brackets at each of ${m.craneBrackets} frames`, true);
+  addLabel('crane-trolley', new THREE.Vector3(0, craneY, -halfL+m.bay*S*0.5), 'gantry', 'Crane Trolley Beam',
+    `Sample bay beam, gantry end<br>Spans ${fmt(m.width)} ft`, true);
+
   // end bracing (X) at both ends
-  [-halfL, halfL].forEach(z=>{
+  [-halfL, halfL].forEach((z,zi)=>{
     const h = m.eave*S;
     const geo1 = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(-halfW,0,z), new THREE.Vector3(halfW,h,z)
@@ -960,9 +1320,12 @@ function buildThreeModel(m){
     const lm = new THREE.LineBasicMaterial({color:0xff8a5c});
     group.add(new THREE.Line(geo1,lm));
     group.add(new THREE.Line(geo2,lm));
+    addLabel('brace-'+zi, new THREE.Vector3(0, h*0.5, z), 'brace', zi===0?'Wind Bracing (Front)':'Wind Bracing (Rear)',
+      `X-bracing, end bay(s): ${m.bracedBays}<br>Member length: ${fmt(m.braceLen)} ft`, true);
   });
 
   applySheetMode();
+  buildLabelDOM();
 
   // center orbit target & camera distance based on size
   const maxDim = Math.max(m.length,m.width,m.ridgeHeight);
@@ -983,6 +1346,7 @@ function updateCameraFromOrbit(){
 function animateThree(){
   requestAnimationFrame(animateThree);
   renderer.render(scene,camera);
+  updateLabelPositions();
 }
 
 /* mouse / touch orbit controls */
@@ -1132,6 +1496,7 @@ function onHandResults(results){
 
 /* ====================== GENERATE ====================== */
 document.getElementById('btnGenerate').addEventListener('click', regenerateAll);
+document.getElementById('pRoofType').addEventListener('change', regenerateAll);
 
 function regenerateAll(){
   const m = computeModel();
