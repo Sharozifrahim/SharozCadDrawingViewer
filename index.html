@@ -204,7 +204,7 @@ footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72
     </div>
     <div>
       <h1>Sharoz<span>Cad</span>DrawingViewer</h1>
-      <p>50 ft &times; 270 ft steel shed — 2D drafting &amp; 3D model</p>
+      <p id="headSub">50 ft &times; 270 ft steel shed — 2D drafting &amp; 3D model</p>
     </div>
   </div>
   <div class="head-right">
@@ -237,8 +237,9 @@ footer{padding:18px 22px; text-align:center; color:var(--ink-dim); font-size:.72
       <div class="field"><label>Gantry column ht (ft)</label><input type="number" id="pGantry" value="22" min="10" max="80"></div>
       <div class="field"><label>Roof slope (rise:run)</label>
         <select id="pSlope">
+          <option value="0" selected>Flat — no slope (0°)</option>
           <option value="0.0417">1 : 24 (2.4°)</option>
-          <option value="0.0833" selected>1 : 12 (4.8°)</option>
+          <option value="0.0833">1 : 12 (4.8°)</option>
           <option value="0.1667">1 : 6 (9.5°)</option>
         </select>
       </div>
@@ -404,7 +405,8 @@ function computeModel(){
   const bay     = parseFloat(document.getElementById('pBay').value)||15;
   const eave    = parseFloat(document.getElementById('pEave').value)||16;
   const gantryH = parseFloat(document.getElementById('pGantry').value)||22;
-  const slope   = parseFloat(document.getElementById('pSlope').value)||0.0833;
+  const slopeRaw = parseFloat(document.getElementById('pSlope').value);
+  const slope   = isNaN(slopeRaw) ? 0 : slopeRaw; // 0 is a valid value (flat roof)
   const purlinS = parseFloat(document.getElementById('pPurlin').value)||5;
 
   const bays = Math.max(1, Math.ceil(length/bay));
@@ -486,7 +488,7 @@ function renderBOM(m){
   `;
   const rows = [
     ['Portal frame columns', `${fmt(m.eave)} ft standard / ${fmt(m.gantryH)} ft gantry end`, m.columns, `${fmt(m.eave)} ft`, `${fmt(m.columnTotalLen)} ft`, 'H-section, base-plated'],
-    ['Rafters (mono-slope)', `slope ${fmt(m.slope*100)}%`, m.rafters, `${fmt(m.rafterLen)} ft`, `${fmt(m.rafterTotalLen)} ft`, `Rise ${fmt(m.rise)} ft over ${fmt(m.width)} ft`],
+    [m.slope>0 ? 'Rafters (mono-slope)' : 'Rafters (flat / level)', m.slope>0 ? `slope ${fmt(m.slope*100)}%` : 'level', m.rafters, `${fmt(m.rafterLen)} ft`, `${fmt(m.rafterTotalLen)} ft`, m.slope>0 ? `Rise ${fmt(m.rise)} ft over ${fmt(m.width)} ft` : `Level span ${fmt(m.width)} ft`],
     ['Roof purlins', `spacing ${fmt(m.purlinS)} ft, ${m.purlinLines} lines`, m.purlinPieces, '20 ft stock', `${fmt(m.purlinTotalLen)} ft`, 'C / Z section'],
     ['Wall girts', `${m.girtLines} lines`, m.girtPieces, '20 ft stock', `${fmt(m.girtTotalLen)} ft`, 'Both long side walls'],
     ['Wind bracing (wall + roof)', 'X-bracing, end bays', m.braceMembers, `${fmt(m.braceLen)} ft`, `${fmt(m.braceMembers*m.braceLen)} ft`, `${m.bracedBays} end bay(s) each side`],
@@ -503,8 +505,8 @@ function renderBOM(m){
   ).join('');
 
   document.getElementById('assumptionsList').innerHTML = `
-    <li>Mono-slope roof, single portal frame repeated at ${fmt(m.bay)} ft centers over ${m.bays} bays (${m.frames} frames total).</li>
-    <li>Eave height ${fmt(m.eave)} ft; ridge height ${fmt(m.ridgeHeight)} ft at slope ${fmt(m.slope*100)}%.</li>
+    <li>${m.slope>0 ? 'Mono-slope roof' : 'Flat (level) roof'}, single portal frame repeated at ${fmt(m.bay)} ft centers over ${m.bays} bays (${m.frames} frames total).</li>
+    <li>${m.slope>0 ? `Eave height ${fmt(m.eave)} ft; high side ${fmt(m.ridgeHeight)} ft at slope ${fmt(m.slope*100)}%.` : `Level eave height ${fmt(m.eave)} ft on both sides — no fall across the ${fmt(m.width)} ft span. Confirm roof drainage: a flat roof needs either internal drains/gutters or a minimum fall added.`}</li>
     <li>One gantry-crane portal bay at the building end, columns raised to ${fmt(m.gantryH)} ft to match the reference photo.</li>
     <li>Both long side walls and both gable end walls are modeled as sheeted panels; toggle "Sheeting view" to inspect structure only, a see-through auto view, or fully sheeted.</li>
     <li>Purlins and girts assumed on 20 ft stock lengths with standard splice overlap ignored (add ~5% for laps/waste).</li>
@@ -671,7 +673,9 @@ function drawElevation(m){
   dimLine(ox, baseY+30, ox+w, baseY+30, `${fmt(m.length)} ft`, -8);
   dimLine(ox-40, baseY, ox-40, baseY-hEave, `${fmt(m.eave)} ft`, -8);
   ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
-  ctx.fillText(`SIDE ELEVATION — eave ${fmt(m.eave)} ft, ridge ${fmt(m.ridgeHeight)} ft — side wall cladding shown`, ox, baseY+55);
+  ctx.fillText(m.slope>0
+    ? `SIDE ELEVATION — eave ${fmt(m.eave)} ft, high side ${fmt(m.ridgeHeight)} ft — side wall cladding shown`
+    : `SIDE ELEVATION — level eave ${fmt(m.eave)} ft both sides — side wall cladding shown`, ox, baseY+55);
 }
 
 function drawSection(m){
@@ -707,7 +711,7 @@ function drawSection(m){
   dimLine(ox+w+40,baseY,ox+w+40,baseY-hRidge,`${fmt(m.ridgeHeight)} ft`,-8);
 
   ctx.fillStyle='#9fb0bb'; ctx.font='11px "JetBrains Mono",monospace'; ctx.textAlign='left';
-  ctx.fillText(`CROSS-SECTION — single frame, ${nP} purlin lines @ ${fmt(m.purlinS)} ft`, ox, baseY+55);
+  ctx.fillText(`CROSS-SECTION — ${m.slope>0?'mono-slope':'flat / level'} frame, ${nP} purlin lines @ ${fmt(m.purlinS)} ft`, ox, baseY+55);
 }
 
 function drawEnd(m){
